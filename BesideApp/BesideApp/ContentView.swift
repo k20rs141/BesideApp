@@ -47,10 +47,14 @@ struct ContentView: View {
                         Task {
                             await homeViewModel.loadMyRoom()
                             guard let room = homeViewModel.myRoom else { return }
-                            roomViewModel = RoomViewModel(room: room, isHost: true)
+                            let vm = RoomViewModel(room: room, isHost: true)
+                            roomViewModel = vm
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 screen = .room
                             }
+                            let userId = authViewModel.session?.user.id.uuidString ?? ""
+                            let name = authViewModel.session?.user.userMetadata["full_name"]?.stringValue
+                            await vm.enterRoom(userId: userId, displayName: name)
                         }
                     },
                     onJoin: {
@@ -66,10 +70,14 @@ struct ContentView: View {
                         isPresented: $showCodeEntry,
                         onJoin: {
                             if let room = joinViewModel.joinedRoom {
-                                roomViewModel = RoomViewModel(room: room, isHost: false)
+                                let vm = RoomViewModel(room: room, isHost: false)
+                                roomViewModel = vm
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     screen = .room
                                 }
+                                let userId = authViewModel.session?.user.id.uuidString ?? ""
+                                let name = authViewModel.session?.user.userMetadata["full_name"]?.stringValue
+                                Task { await vm.enterRoom(userId: userId, displayName: name) }
                             }
                         },
                         validateCode: { code in
@@ -88,11 +96,14 @@ struct ContentView: View {
                 if let vm = roomViewModel {
                     RoomViewWrapper(
                         roomViewModel: vm,
+                        authViewModel: authViewModel,
                         onExit: {
-                            Task { await vm.leaveRoom() }
-                            roomViewModel = nil
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                screen = .home
+                            Task {
+                                await vm.leaveRoom()
+                                roomViewModel = nil
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    screen = .home
+                                }
                             }
                         }
                     )
@@ -155,16 +166,28 @@ private struct SettingsSheet: View {
 
 private struct RoomViewWrapper: View {
     let roomViewModel: RoomViewModel
+    let authViewModel: AuthViewModel
     var onExit: () -> Void
+
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         RoomView(
             isHost: roomViewModel.isHost,
-            participantCount: max(1, roomViewModel.participants.count),
+            participantCount: max(1, roomViewModel.onlineParticipants.count),
             guestJoining: !roomViewModel.isHost,
             onExit: onExit,
             onSelectTrack: { _ in }
         )
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                let userId = authViewModel.session?.user.id.uuidString ?? ""
+                let name = authViewModel.session?.user.userMetadata["full_name"]?.stringValue
+                Task {
+                    await roomViewModel.reconnect(userId: userId, displayName: name)
+                }
+            }
+        }
     }
 }
 

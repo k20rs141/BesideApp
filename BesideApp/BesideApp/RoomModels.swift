@@ -53,3 +53,19 @@ struct RoomParticipant: Codable, Identifiable {
         case leftAt = "left_at"
     }
 }
+
+// MARK: - PresenceUser
+
+struct PresenceUser: Codable, Identifiable, Equatable {
+    var userId: String
+    var role: String        // "host" | "guest"
+    var displayName: String?
+
+    var id: String { userId }
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case role
+        case displayName = "display_name"
+    }
+}
