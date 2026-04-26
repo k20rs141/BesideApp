@@ -26,7 +26,10 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: authViewModel.session == nil)
         .onChange(of: authViewModel.session == nil) { _, isSignedOut in
-            if isSignedOut { screen = .signIn }
+            if isSignedOut {
+                screen = .signIn
+                homeViewModel = HomeViewModel()
+            }
         }
     }
 
@@ -40,13 +43,13 @@ struct ContentView: View {
             case .home:
                 HomeView(
                     onCreate: {
+                        // マイルームを開く
                         Task {
-                            await homeViewModel.createRoom()
-                            if let room = homeViewModel.currentRoom {
-                                roomViewModel = RoomViewModel(room: room, isHost: true)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    screen = .room
-                                }
+                            await homeViewModel.loadMyRoom()
+                            guard let room = homeViewModel.myRoom else { return }
+                            roomViewModel = RoomViewModel(room: room, isHost: true)
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                screen = .room
                             }
                         }
                     },
@@ -87,7 +90,6 @@ struct ContentView: View {
                         roomViewModel: vm,
                         onExit: {
                             Task { await vm.leaveRoom() }
-                            homeViewModel.currentRoom = nil
                             roomViewModel = nil
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 screen = .home
@@ -103,12 +105,9 @@ struct ContentView: View {
             if screen == .signIn { screen = .home }
         }
         .task(id: authViewModel.session?.user.id) {
+            // 認証後にマイルームをバックグラウンドで取得しておく
             guard authViewModel.session != nil else { return }
-            await homeViewModel.restoreActiveRoomIfNeeded()
-            if let room = homeViewModel.currentRoom {
-                roomViewModel = RoomViewModel(room: room, isHost: homeViewModel.restoredIsHost)
-                screen = .room
-            }
+            await homeViewModel.loadMyRoom()
         }
     }
 }

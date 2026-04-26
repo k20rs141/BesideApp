@@ -26,11 +26,13 @@ struct Profile: Codable, Identifiable {
     let id: String
     var displayName: String?
     var avatarUrl: String?
+    var myRoomId: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
         case avatarUrl = "avatar_url"
+        case myRoomId = "my_room_id"
     }
 }
 

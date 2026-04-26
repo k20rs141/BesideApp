@@ -3,35 +3,28 @@ import Foundation
 @Observable
 @MainActor
 final class HomeViewModel {
-    var isCreating = false
-    var currentRoom: Room?
-    var restoredIsHost: Bool = false
+    var myRoom: Room?
+    var isLoading = false
 
     private let roomService = RoomService()
 
-    // MARK: - 起動時: 既存アクティブルームを復元
+    // MARK: - マイルームを取得 (起動時・ボタンタップ時に呼ぶ)
 
-    func restoreActiveRoomIfNeeded() async {
+    func loadMyRoom() async {
+        guard myRoom == nil else { return } // キャッシュ済みならスキップ
+        isLoading = true
+        defer { isLoading = false }
         do {
-            if let result = try await roomService.fetchActiveRoom() {
-                currentRoom = result.room
-                restoredIsHost = result.isHost
-            }
+            myRoom = try await roomService.fetchMyRoom()
         } catch {
-            print("[HomeViewModel] restoreActiveRoom error:", error)
+            print("[HomeViewModel] loadMyRoom error:", error)
         }
     }
 
-    // MARK: - 新規ルーム作成
+    // MARK: - マイルームを強制リロード
 
-    func createRoom() async {
-        isCreating = true
-        defer { isCreating = false }
-        do {
-            currentRoom = try await roomService.createRoom()
-            restoredIsHost = true
-        } catch {
-            print("[HomeViewModel] createRoom error:", error)
-        }
+    func reloadMyRoom() async {
+        myRoom = nil
+        await loadMyRoom()
     }
 }
