@@ -60,3 +60,8 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Beside — Supabase 接続情報 (Config.example.xcconfig はコミット可)
+Config.xcconfig
+
+BesideApp/.DS_Store
