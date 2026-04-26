@@ -6,11 +6,11 @@ struct ContentView: View {
 
     @State private var screen: AppScreen = .signIn
     @State private var showCodeEntry: Bool = false
-    @State private var isHost: Bool = true
-    @State private var participantCount: Int = 2
-    @State private var roomViewKey: UUID = UUID()
-    @State private var pendingGuestJoin: Bool = false
     @State private var showSettings: Bool = false
+
+    @State private var homeViewModel = HomeViewModel()
+    @State private var joinViewModel = JoinRoomViewModel()
+    @State private var roomViewModel: RoomViewModel?
 
     var body: some View {
         ZStack {
@@ -35,17 +35,19 @@ struct ContentView: View {
         ZStack {
             switch screen {
             case .signIn:
-                // セッションがある場合は home に即遷移
                 Color.clear.onAppear { screen = .home }
 
             case .home:
                 HomeView(
                     onCreate: {
-                        isHost = true
-                        pendingGuestJoin = false
-                        roomViewKey = UUID()
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            screen = .room
+                        Task {
+                            await homeViewModel.createRoom()
+                            if let room = homeViewModel.currentRoom {
+                                roomViewModel = RoomViewModel(room: room, isHost: true)
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    screen = .room
+                                }
+                            }
                         }
                     },
                     onJoin: {
@@ -57,14 +59,20 @@ struct ContentView: View {
                 )
                 .transition(.opacity)
                 .sheet(isPresented: $showCodeEntry) {
-                    CodeEntrySheet(isPresented: $showCodeEntry) {
-                        isHost = false
-                        pendingGuestJoin = true
-                        roomViewKey = UUID()
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            screen = .room
+                    CodeEntrySheet(
+                        isPresented: $showCodeEntry,
+                        onJoin: {
+                            if let room = joinViewModel.joinedRoom {
+                                roomViewModel = RoomViewModel(room: room, isHost: false)
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    screen = .room
+                                }
+                            }
+                        },
+                        validateCode: { code in
+                            await joinViewModel.joinRoom(code: code)
                         }
-                    }
+                    )
                 }
                 .sheet(isPresented: $showSettings) {
                     SettingsSheet {
@@ -74,23 +82,33 @@ struct ContentView: View {
                 }
 
             case .room:
-                RoomViewWrapper(
-                    key: roomViewKey,
-                    isHost: isHost,
-                    participantCount: participantCount,
-                    pendingGuestJoin: pendingGuestJoin,
-                    onExit: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            screen = .home
+                if let vm = roomViewModel {
+                    RoomViewWrapper(
+                        roomViewModel: vm,
+                        onExit: {
+                            Task { await vm.leaveRoom() }
+                            homeViewModel.currentRoom = nil
+                            roomViewModel = nil
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                screen = .home
+                            }
                         }
-                    }
-                )
-                .transition(.opacity)
+                    )
+                    .transition(.opacity)
+                }
             }
         }
         .animation(.easeInOut(duration: 0.3), value: screen)
         .onAppear {
             if screen == .signIn { screen = .home }
+        }
+        .task(id: authViewModel.session?.user.id) {
+            guard authViewModel.session != nil else { return }
+            await homeViewModel.restoreActiveRoomIfNeeded()
+            if let room = homeViewModel.currentRoom {
+                roomViewModel = RoomViewModel(room: room, isHost: homeViewModel.restoredIsHost)
+                screen = .room
+            }
         }
     }
 }
@@ -137,21 +155,17 @@ private struct SettingsSheet: View {
 // MARK: - RoomView Wrapper
 
 private struct RoomViewWrapper: View {
-    let key: UUID
-    let isHost: Bool
-    let participantCount: Int
-    let pendingGuestJoin: Bool
+    let roomViewModel: RoomViewModel
     var onExit: () -> Void
 
     var body: some View {
         RoomView(
-            isHost: isHost,
-            participantCount: participantCount,
-            guestJoining: pendingGuestJoin,
+            isHost: roomViewModel.isHost,
+            participantCount: max(1, roomViewModel.participants.count),
+            guestJoining: !roomViewModel.isHost,
             onExit: onExit,
             onSelectTrack: { _ in }
         )
-        .id(key)
     }
 }
 

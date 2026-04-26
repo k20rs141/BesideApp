@@ -3,7 +3,7 @@
 ## Overview
 
 カップル・パートナー向けの音楽同期再生アプリ。Apple Music契約者同士が、
-通話なしで同じ曲を同じタイミングで聴ける。詳細は docs/Beside_仕様書_v0.1.md を参照。
+通話なしで同じ曲を同じタイミングで聴ける。詳細は docs/Beside_仕様書_v0.2.md を参照。
 
 ## Tech Stack
 
@@ -25,7 +25,7 @@
 
 ### 2. 仕様書ファースト
 
-- 機能の挙動・受け入れ基準は `BesideApp/docs/Beside_仕様書_v0.1.md` に従う
+- 機能の挙動・受け入れ基準は `BesideApp/docs/Beside_仕様書_v0.2.md` に従う
 - 仕様書と矛盾する実装をする場合は、必ず指摘して確認を取る
 
 ### 3. データベース変更
@@ -65,8 +65,8 @@ BesideApp/                         ← Xcode project root
 │   ├── Services/                  SupabaseManager, MusicPlayerService等 (M1以降追加)
 │   └── Extensions/                既存型の拡張 (必要に応じて追加)
 ├── docs/
-│   ├── Beside_仕様書_v0.1.md
-│   └── Beside_実装ガイド_v0.1.md
+│   ├── Beside_仕様書_v0.2.md
+│   └── Beside_実装ガイド_v0.2.md
 ├── migrations/                    Supabase 用 SQL マイグレーション (M2以降追加)
 ├── Config.example.xcconfig        Supabase 接続情報テンプレート (コミット可)
 └── Config.xcconfig                Supabase 接続情報 実値 (gitignore 済み・各自作成)
