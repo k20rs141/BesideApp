@@ -73,6 +73,22 @@ final class AuthViewModel: NSObject {
         }
     }
 
+    // MARK: - Delete account
+
+    /// アカウント削除 → 自動でサインアウト状態へ。失敗時は lastError を立てて false 返却。
+    func deleteAccount() async -> Bool {
+        do {
+            try await RoomService().deleteAccount()
+            try? await supabase.auth.signOut()
+            session = nil
+            return true
+        } catch {
+            print("[AuthViewModel] deleteAccount error:", error)
+            lastError = "アカウント削除に失敗しました。しばらくしてから再度お試しください"
+            return false
+        }
+    }
+
     // MARK: - Nonce helpers
 
     private func randomNonce(length: Int = 32) -> String {

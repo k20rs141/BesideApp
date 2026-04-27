@@ -95,10 +95,10 @@ struct ContentView: View {
                     )
                 }
                 .sheet(isPresented: $showSettings) {
-                    SettingsSheet {
-                        showSettings = false
-                        Task { await authViewModel.signOut() }
-                    }
+                    SettingsSheet(
+                        authViewModel: authViewModel,
+                        onDismiss: { showSettings = false }
+                    )
                 }
                 .alert(
                     homeViewModel.lastError ?? "",
@@ -149,39 +149,149 @@ struct ContentView: View {
 // MARK: - Settings Sheet
 
 private struct SettingsSheet: View {
-    var onSignOut: () -> Void
+    let authViewModel: AuthViewModel
+    var onDismiss: () -> Void
+
+    @State private var safariURL: URL?
+    @State private var showDeleteConfirm1 = false
+    @State private var showDeleteConfirm2 = false
+    @State private var isDeleting = false
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.besideBase.ignoresSafeArea()
+
                 VStack(spacing: 0) {
-                    Spacer()
-                    Button(role: .destructive) {
-                        onSignOut()
-                    } label: {
-                        Text("ログアウト")
-                            .font(.system(size: 17, weight: .medium))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background(
+                    VStack(spacing: 0) {
+                        SettingsRow(label: "利用規約", systemImage: "doc.text") {
+                            safariURL = AppLinks.termsOfService
+                        }
+                        Divider().background(Color.white.opacity(0.06))
+                        SettingsRow(label: "プライバシーポリシー", systemImage: "lock.shield") {
+                            safariURL = AppLinks.privacyPolicy
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                            .overlay(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white.opacity(0.06))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-                                    )
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
                             )
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.top, 12)
+
+                    Spacer()
+
+                    VStack(spacing: 12) {
+                        Button {
+                            onDismiss()
+                            Task { await authViewModel.signOut() }
+                        } label: {
+                            Text("ログアウト")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(Color.white.opacity(0.06))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                                        )
+                                )
+                        }
+
+                        Button(role: .destructive) {
+                            showDeleteConfirm1 = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isDeleting {
+                                    SpinnerView(color: .besideSyncBad, size: 16)
+                                }
+                                Text("アカウントを削除")
+                                    .font(.system(size: 15, weight: .regular))
+                            }
+                            .foregroundColor(.besideSyncBad)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                        }
+                        .disabled(isDeleting)
                     }
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, 36)
                 }
             }
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+        .sheet(item: Binding(
+            get: { safariURL.map { IdentifiableURL(url: $0) } },
+            set: { safariURL = $0?.url }
+        )) { wrapper in
+            SafariView(url: wrapper.url)
+                .ignoresSafeArea()
+        }
+        .confirmationDialog(
+            "アカウントを削除しますか?",
+            isPresented: $showDeleteConfirm1,
+            titleVisibility: .visible
+        ) {
+            Button("削除する", role: .destructive) { showDeleteConfirm2 = true }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("マイルームと参加履歴がすべて消えます。この操作は取り消せません。")
+        }
+        .alert("本当に削除しますか?", isPresented: $showDeleteConfirm2) {
+            Button("削除", role: .destructive) {
+                isDeleting = true
+                Task {
+                    let ok = await authViewModel.deleteAccount()
+                    isDeleting = false
+                    if ok { onDismiss() }
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("削除すると元に戻せません。")
+        }
+    }
+}
+
+private struct IdentifiableURL: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
+private struct SettingsRow: View {
+    let label: String
+    let systemImage: String
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14))
+                    .foregroundColor(.besideTextSecondary)
+                    .frame(width: 22)
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundColor(.white)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.besideTextTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
     }
 }
 

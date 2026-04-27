@@ -112,6 +112,14 @@ final class RoomService {
             .execute()
     }
 
+    // MARK: - deleteAccount
+
+    /// 自分のアカウント(auth.users)を削除する。
+    /// profiles の cascade により rooms / room_participants も連鎖削除される。
+    func deleteAccount() async throws {
+        try await client.rpc("delete_my_account").execute()
+    }
+
     // MARK: - leaveRoom
 
     /// ホスト(マイルーム)退出: ルームは永続化するため DB 変更なし。
