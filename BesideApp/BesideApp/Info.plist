@@ -6,6 +6,10 @@
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Beside</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>同期再生のために Apple Music へのアクセスを使用します。</string>
 	<key>UIBackgroundModes</key>
