@@ -31,20 +31,24 @@ final class MusicPlayerService {
         return response.songs.first?.id.rawValue
     }
 
-    /// 指定 songId の曲を time 秒から再生する。
+    /// 指定 songId の曲を time 秒から再生する。5秒以内に開始できなければタイムアウト。
     func load(songId: String, at time: TimeInterval = 0) async throws {
-        let request = MusicCatalogResourceRequest<Song>(
-            matching: \.id, equalTo: MusicItemID(rawValue: songId)
-        )
-        let response = try await request.response()
-        guard let song = response.items.first else { return }
-        currentSong = song
-        player.queue = [song]
-        try await player.play()
-        if time > 0.5 {
-            player.playbackTime = time
+        try await withTimeout(seconds: 5) { [self] in
+            let request = MusicCatalogResourceRequest<Song>(
+                matching: \.id, equalTo: MusicItemID(rawValue: songId)
+            )
+            let response = try await request.response()
+            guard let song = response.items.first else {
+                throw MusicLoadError.notFound
+            }
+            currentSong = song
+            player.queue = [song]
+            try await player.play()
+            if time > 0.5 {
+                player.playbackTime = time
+            }
+            startPolling()
         }
-        startPolling()
     }
 
     func play() async throws {
@@ -85,6 +89,33 @@ final class MusicPlayerService {
                 try? await Task.sleep(for: .milliseconds(250))
             }
         }
+    }
+}
+
+// MARK: - Errors
+
+enum MusicLoadError: Error {
+    case notFound
+    case timeout
+}
+
+/// `body` を seconds 以内で完了させる。超過したら timeout を throw する。
+@MainActor
+private func withTimeout<T: Sendable>(
+    seconds: TimeInterval,
+    body: @escaping @MainActor () async throws -> T
+) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await body() }
+        group.addTask {
+            try await Task.sleep(for: .seconds(seconds))
+            throw MusicLoadError.timeout
+        }
+        guard let result = try await group.next() else {
+            throw MusicLoadError.timeout
+        }
+        group.cancelAll()
+        return result
     }
 }
 

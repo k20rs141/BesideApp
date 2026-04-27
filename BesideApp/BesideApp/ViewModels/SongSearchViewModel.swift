@@ -7,12 +7,28 @@ import SwiftUI
 final class SongSearchViewModel {
     var results: [Track] = []
     var isSearching: Bool = false
+    var searchError: String?
+    var subscriptionMissing: Bool = false
 
     private let roomViewModel: RoomViewModel
     private var debounceTask: Task<Void, Never>?
 
     init(roomViewModel: RoomViewModel) {
         self.roomViewModel = roomViewModel
+        Task { await checkSubscription() }
+    }
+
+    /// Apple Music 契約状態を確認。未契約なら searchError + subscriptionMissing を立てる。
+    func checkSubscription() async {
+        do {
+            let sub = try await MusicSubscription.current
+            if !sub.canPlayCatalogContent {
+                subscriptionMissing = true
+                searchError = "Apple Music の契約が必要です"
+            }
+        } catch {
+            print("[SongSearchViewModel] subscription check error:", error)
+        }
     }
 
     func onSearchTextChanged(_ text: String) {
@@ -20,9 +36,16 @@ final class SongSearchViewModel {
         guard !text.isEmpty else {
             results = []
             isSearching = false
+            searchError = subscriptionMissing ? "Apple Music の契約が必要です" : nil
+            return
+        }
+        if subscriptionMissing {
+            searchError = "Apple Music の契約が必要です"
+            isSearching = false
             return
         }
         isSearching = true
+        searchError = nil
         debounceTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
@@ -48,9 +71,11 @@ final class SongSearchViewModel {
             let dataResponse = try await MusicDataRequest(urlRequest: URLRequest(url: url)).response()
             let decoded = try JSONDecoder().decode(AppleMusicSearchResponse.self, from: dataResponse.data)
             results = decoded.results.songs?.data.compactMap { $0.toTrack() } ?? []
+            searchError = nil
         } catch {
             print("[SongSearchViewModel] search error:", error)
             results = []
+            searchError = "検索できません。リトライしてください"
         }
         isSearching = false
     }

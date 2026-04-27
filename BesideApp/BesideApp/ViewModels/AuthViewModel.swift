@@ -8,6 +8,7 @@ import Supabase
 final class AuthViewModel: NSObject {
     var session: Session?
     var isLoading = false
+    var lastError: String?
 
     private var currentNonce: String?
     private let supabase = SupabaseManager.shared.client
@@ -48,6 +49,7 @@ final class AuthViewModel: NSObject {
         let nonce = randomNonce()
         currentNonce = nonce
         isLoading = true
+        lastError = nil
         defer { isLoading = false }
 
         let request = ASAuthorizationAppleIDProvider().createRequest()
@@ -67,6 +69,7 @@ final class AuthViewModel: NSObject {
             try await supabase.auth.signOut()
         } catch {
             print("[AuthViewModel] signOut error:", error)
+            lastError = "ログアウトに失敗しました"
         }
     }
 
@@ -106,6 +109,7 @@ extension AuthViewModel: ASAuthorizationControllerDelegate {
                 let nonce = currentNonce
             else {
                 print("[AuthViewModel] Apple credential invalid")
+                lastError = "認証に失敗しました"
                 return
             }
 
@@ -115,6 +119,7 @@ extension AuthViewModel: ASAuthorizationControllerDelegate {
                 )
             } catch {
                 print("[AuthViewModel] Supabase signIn error:", error)
+                lastError = "サインインに失敗しました。もう一度お試しください"
             }
         }
     }
@@ -123,8 +128,15 @@ extension AuthViewModel: ASAuthorizationControllerDelegate {
         controller: ASAuthorizationController,
         didCompleteWithError error: Error
     ) {
-        // ユーザーキャンセル含む。M6 でアラート実装。
-        print("[AuthViewModel] Apple auth error:", error)
+        let nsErr = error as NSError
+        let isCancel = (nsErr.domain == ASAuthorizationError.errorDomain
+            && nsErr.code == ASAuthorizationError.canceled.rawValue)
+        Task { @MainActor in
+            if !isCancel {
+                print("[AuthViewModel] Apple auth error:", error)
+                lastError = "認証に失敗しました"
+            }
+        }
     }
 }
 

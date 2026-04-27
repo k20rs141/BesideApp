@@ -120,7 +120,27 @@ struct RoomView: View {
         }
         .sheet(isPresented: $showSearch) {
             if let vm = searchViewModel {
+                @Bindable var bindableVM = vm
                 SearchSheet(isPresented: $showSearch, viewModel: vm)
+                    .alert(
+                        bindableVM.searchError ?? "",
+                        isPresented: Binding(
+                            get: { bindableVM.searchError != nil },
+                            set: { if !$0 { bindableVM.searchError = nil } }
+                        )
+                    ) {
+                        if bindableVM.subscriptionMissing {
+                            Button("設定を開く") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                                bindableVM.searchError = nil
+                            }
+                            Button("閉じる", role: .cancel) { bindableVM.searchError = nil }
+                        } else {
+                            Button("OK", role: .cancel) { bindableVM.searchError = nil }
+                        }
+                    }
             }
         }
     }

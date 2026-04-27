@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var roomViewModel: RoomViewModel?
 
     var body: some View {
+        @Bindable var auth = authViewModel
         ZStack {
             if authViewModel.session == nil {
                 SignInView {
@@ -30,6 +31,15 @@ struct ContentView: View {
                 screen = .signIn
                 homeViewModel = HomeViewModel()
             }
+        }
+        .alert(
+            authViewModel.lastError ?? "",
+            isPresented: Binding(
+                get: { auth.lastError != nil },
+                set: { if !$0 { auth.lastError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { auth.lastError = nil }
         }
     }
 
@@ -88,6 +98,21 @@ struct ContentView: View {
                     SettingsSheet {
                         showSettings = false
                         Task { await authViewModel.signOut() }
+                    }
+                }
+                .alert(
+                    homeViewModel.lastError ?? "",
+                    isPresented: Binding(
+                        get: { homeViewModel.lastError != nil },
+                        set: { if !$0 { homeViewModel.lastError = nil } }
+                    )
+                ) {
+                    Button("リトライ") {
+                        homeViewModel.lastError = nil
+                        Task { await homeViewModel.reloadMyRoom() }
+                    }
+                    Button("キャンセル", role: .cancel) {
+                        homeViewModel.lastError = nil
                     }
                 }
 
@@ -163,7 +188,7 @@ private struct SettingsSheet: View {
 // MARK: - RoomView Wrapper
 
 private struct RoomViewWrapper: View {
-    let roomViewModel: RoomViewModel
+    @Bindable var roomViewModel: RoomViewModel
     let authViewModel: AuthViewModel
     var onExit: () -> Void
 
@@ -185,6 +210,36 @@ private struct RoomViewWrapper: View {
                 Task {
                     await roomViewModel.reconnect(userId: userId, displayName: name)
                 }
+            }
+        }
+        .alert(item: $roomViewModel.roomAlert) { alert in
+            switch alert {
+            case .appleMusicNotSubscribed:
+                return Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    primaryButton: .default(Text("設定を開く")) {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    },
+                    secondaryButton: .cancel(Text("閉じる"))
+                )
+            case .reconnectFailed:
+                return Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    primaryButton: .default(Text("リトライ")) {
+                        Task { await roomViewModel.retryConnection() }
+                    },
+                    secondaryButton: .cancel(Text("閉じる"))
+                )
+            default:
+                return Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
     }

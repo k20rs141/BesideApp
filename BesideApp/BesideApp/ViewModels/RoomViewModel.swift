@@ -2,6 +2,42 @@ import Foundation
 import MusicKit
 import Supabase
 
+enum RoomAlert: String, Identifiable {
+    case appleMusicNotSubscribed
+    case songNotInCatalog
+    case songLoadTimeout
+    case reconnectFailed
+    case hostOffline
+    case playbackFailed
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .appleMusicNotSubscribed: return "Apple Music の契約が必要です"
+        case .songNotInCatalog:        return "この曲は再生できません"
+        case .songLoadTimeout:         return "読み込みに失敗しました"
+        case .reconnectFailed:         return "接続できません"
+        case .hostOffline:             return "ホストがオフラインです"
+        case .playbackFailed:          return "再生に失敗しました"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .appleMusicNotSubscribed: return "設定アプリから Apple Music をご契約ください。"
+        case .songNotInCatalog:        return "地域カタログにない曲の可能性があります。別の曲を選んでください。"
+        case .songLoadTimeout:         return "ネットワーク状況をご確認ください。"
+        case .reconnectFailed:         return "通信状況をご確認のうえリトライしてください。"
+        case .hostOffline:             return "ローカル再生は継続しています。"
+        case .playbackFailed:          return "もう一度お試しください。"
+        }
+    }
+
+    /// 設定アプリへ誘導するか
+    var opensSettings: Bool { self == .appleMusicNotSubscribed }
+}
+
 @Observable
 @MainActor
 final class RoomViewModel {
@@ -16,6 +52,17 @@ final class RoomViewModel {
     var currentTrack: Track?
     var isPaused: Bool = false
     var progress: Int { Int(musicService.currentPlaybackTime) }
+
+    // MARK: - Alert state (RoomView が .alert(item:) で読む)
+    var roomAlert: RoomAlert?
+
+    // MARK: - 接続状態
+    private var connectionObserverTask: Task<Void, Never>?
+
+    // MARK: - ホストオフライン監視 (ゲスト側のみ)
+    private var lastPlayStateAt: Date = Date()
+    private var hostWatchTask: Task<Void, Never>?
+    private var hostOfflineNotified: Bool = false
 
     // MARK: - Presence
 
@@ -48,6 +95,8 @@ final class RoomViewModel {
     func enterRoom(userId: String, displayName: String?) async {
         _ = await musicService.requestAuthorization()
 
+        startConnectionObserver()
+
         await channelManager.connect(
             roomCode: currentRoom.code,
             userId: userId,
@@ -59,6 +108,7 @@ final class RoomViewModel {
             startHostBroadcast()
         } else {
             startGuestListeners()
+            startHostOfflineWatcher()
             // ホストがすでに再生中かチェック
             await syncToCurrentRoomState()
         }
@@ -82,15 +132,29 @@ final class RoomViewModel {
         hostBroadcastTask?.cancel()
         stateListenerTask?.cancel()
         eventListenerTask?.cancel()
+        connectionObserverTask?.cancel()
+        hostWatchTask?.cancel()
         musicService.stop()
         await channelManager.disconnect()
         try? await roomService.leaveRoom(roomId: currentRoom.id, isHost: isHost)
+    }
+
+    /// 接続失敗アラートのリトライボタンから呼ぶ。
+    func retryConnection() async {
+        await channelManager.retryFromFailure()
     }
 
     // MARK: - Host actions
 
     /// SearchSheet から曲が選ばれた時に呼ばれる
     func playAsHost(_ track: Track) async {
+        // Apple Music 契約確認(未契約ならアラートで設定誘導)
+        if let sub = try? await MusicSubscription.current, !sub.canPlayCatalogContent {
+            roomAlert = .appleMusicNotSubscribed
+            syncState = .idle
+            return
+        }
+
         syncState = .loading
         currentTrack = track
         isPaused = false
@@ -98,6 +162,7 @@ final class RoomViewModel {
         do {
             // Apple Music カタログで検索
             guard let songId = try await musicService.searchSongId(title: track.title, artist: track.artist) else {
+                roomAlert = .songNotInCatalog
                 syncState = .idle
                 return
             }
@@ -121,6 +186,7 @@ final class RoomViewModel {
 
         } catch {
             print("[RoomViewModel] playAsHost error:", error)
+            roomAlert = (error as? MusicLoadError) == .timeout ? .songLoadTimeout : .playbackFailed
             syncState = .idle
         }
     }
@@ -136,7 +202,13 @@ final class RoomViewModel {
             await channelManager.broadcast(event: "play_event", message: event)
             await channelManager.broadcast(event: "play_event", message: event)
         } else {
-            try? await musicService.play()
+            do {
+                try await musicService.play()
+            } catch {
+                print("[RoomViewModel] togglePlayback play error:", error)
+                roomAlert = .playbackFailed
+                return
+            }
             isPaused = false
             syncState = .playing
             let event = PlayEvent(type: .play, songId: activeSongId, playbackTime: musicService.currentTime())
@@ -213,6 +285,7 @@ final class RoomViewModel {
             syncState = .playing
         } catch {
             print("[RoomViewModel] syncToCurrentRoomState error:", error)
+            roomAlert = (error as? MusicLoadError) == .timeout ? .songLoadTimeout : .songNotInCatalog
             syncState = .idle
         }
     }
@@ -221,6 +294,8 @@ final class RoomViewModel {
 
     private func applyPlayState(_ state: PlayState) async {
         debugLastSeq = state.seq
+        lastPlayStateAt = Date()
+        hostOfflineNotified = false
 
         // 曲が変わった場合はロード
         if state.songId != activeSongId, !state.songId.isEmpty {
@@ -236,6 +311,7 @@ final class RoomViewModel {
                 isPaused = !state.isPlaying
             } catch {
                 print("[RoomViewModel] applyPlayState load error:", error)
+                roomAlert = (error as? MusicLoadError) == .timeout ? .songLoadTimeout : .songNotInCatalog
                 syncState = .idle
             }
             return
@@ -294,6 +370,7 @@ final class RoomViewModel {
                     isPaused = false
                 } catch {
                     print("[RoomViewModel] applyPlayEvent load error:", error)
+                    roomAlert = (error as? MusicLoadError) == .timeout ? .songLoadTimeout : .songNotInCatalog
                 }
             } else if !activeSongId.isEmpty {
                 musicService.seek(to: max(0, event.playbackTime))
@@ -321,6 +398,62 @@ final class RoomViewModel {
                     isPaused = false
                 } catch {
                     print("[RoomViewModel] applyPlayEvent skip error:", error)
+                    roomAlert = (error as? MusicLoadError) == .timeout ? .songLoadTimeout : .songNotInCatalog
+                }
+            }
+        }
+    }
+
+    // MARK: - Connection observer
+
+    private func startConnectionObserver() {
+        connectionObserverTask?.cancel()
+        connectionObserverTask = Task { [weak self] in
+            // RealtimeChannelManager の connectionState は @Observable なので、
+            // 明示的にポーリングして変化を syncState/roomAlert に反映する。
+            var prev: RealtimeConnectionState? = nil
+            while !Task.isCancelled {
+                guard let self else { return }
+                let cur = self.channelManager.connectionState
+                if cur != prev {
+                    self.applyConnectionState(cur)
+                    prev = cur
+                }
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+        }
+    }
+
+    private func applyConnectionState(_ state: RealtimeConnectionState) {
+        switch state {
+        case .idle, .connected:
+            if syncState == .disconnected {
+                syncState = activeSongId.isEmpty ? .idle : (isPaused ? .paused : .playing)
+            }
+        case .reconnecting:
+            syncState = .disconnected
+        case .failed:
+            syncState = .disconnected
+            roomAlert = .reconnectFailed
+        }
+    }
+
+    // MARK: - Host offline watcher (guest only)
+
+    private func startHostOfflineWatcher() {
+        hostWatchTask?.cancel()
+        lastPlayStateAt = Date()
+        hostOfflineNotified = false
+        hostWatchTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self else { return }
+                // 再生していない/まだ曲が始まっていない時は対象外
+                guard !self.activeSongId.isEmpty else { continue }
+                let elapsed = Date().timeIntervalSince(self.lastPlayStateAt)
+                if elapsed > 5, !self.hostOfflineNotified {
+                    self.hostOfflineNotified = true
+                    self.roomAlert = .hostOffline
                 }
             }
         }

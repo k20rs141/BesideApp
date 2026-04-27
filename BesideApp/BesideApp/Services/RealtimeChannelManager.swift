@@ -1,10 +1,20 @@
 import Foundation
 import Supabase
 
+enum RealtimeConnectionState: Equatable {
+    case idle
+    case connected
+    case reconnecting(attempt: Int)
+    case failed
+}
+
 @Observable
 @MainActor
 final class RealtimeChannelManager {
     var onlineUsers: [PresenceUser] = []
+
+    /// 接続状態。RoomViewModel が観察して syncState/roomAlert に反映する。
+    var connectionState: RealtimeConnectionState = .idle
 
     // Broadcast streams (available after connect)
     private(set) var playStateStream: AsyncStream<JSONObject>?
@@ -12,26 +22,50 @@ final class RealtimeChannelManager {
 
     private var channel: RealtimeChannelV2?
     private var presenceTask: Task<Void, Never>?
+    private var statusTask: Task<Void, Never>?
 
     private let client = SupabaseManager.shared.client
+
+    // 最後の接続パラメータ(自動再接続で使う)
+    private var lastParams: (roomCode: String, userId: String, isHost: Bool, displayName: String?)?
+
+    private static let maxRetries = 3
+    private static let retryDelay: Duration = .seconds(3)
 
     // MARK: - Connect
 
     func connect(roomCode: String, userId: String, isHost: Bool, displayName: String?) async {
         await disconnect()
+        lastParams = (roomCode, userId, isHost, displayName)
 
+        let connected = await attemptSubscribe(roomCode: roomCode, userId: userId, isHost: isHost, displayName: displayName)
+        if connected {
+            connectionState = .connected
+            startStatusObserver()
+        } else {
+            await runRetryLoop()
+        }
+    }
+
+    /// チャネル購読の単発試行。成功なら true。
+    private func attemptSubscribe(roomCode: String, userId: String, isHost: Bool, displayName: String?) async -> Bool {
         let ch = client.channel("room:\(roomCode)") {
             $0.presence.key = userId
             $0.broadcast.receiveOwnBroadcasts = false
         }
         channel = ch
 
-        // Register all streams BEFORE subscribe
         let presenceStream = ch.presenceChange()
         let psStream = ch.broadcastStream(event: "play_state")
         let peStream = ch.broadcastStream(event: "play_event")
 
-        try? await ch.subscribeWithError()
+        do {
+            try await ch.subscribeWithError()
+        } catch {
+            print("[RealtimeChannelManager] subscribe error:", error)
+            channel = nil
+            return false
+        }
 
         let me = PresenceUser(userId: userId, role: isHost ? "host" : "guest", displayName: displayName)
         try? await ch.track(me)
@@ -39,17 +73,74 @@ final class RealtimeChannelManager {
         playStateStream = psStream
         playEventStream = peStream
 
+        presenceTask?.cancel()
         presenceTask = Task { [weak self] in
             for await action in presenceStream {
                 guard let self else { return }
                 self.applyPresenceAction(action)
             }
         }
+        return true
+    }
+
+    /// status が想定外に .unsubscribed に落ちたら自動再接続する。
+    private func startStatusObserver() {
+        statusTask?.cancel()
+        guard let ch = channel else { return }
+        statusTask = Task { [weak self] in
+            for await status in ch.statusChange {
+                guard let self else { return }
+                if status == .unsubscribed,
+                   case .connected = self.connectionState {
+                    print("[RealtimeChannelManager] unexpected unsubscribe — reconnecting")
+                    await self.runRetryLoop()
+                }
+            }
+        }
+    }
+
+    /// 3秒 × 3回のリトライ。最終失敗で .failed をセット。
+    private func runRetryLoop() async {
+        guard let p = lastParams else {
+            connectionState = .failed
+            return
+        }
+
+        for attempt in 1...Self.maxRetries {
+            connectionState = .reconnecting(attempt: attempt)
+            try? await Task.sleep(for: Self.retryDelay)
+
+            // チャネルをクリーンアップしてから再試行
+            await teardownChannel()
+
+            let ok = await attemptSubscribe(
+                roomCode: p.roomCode,
+                userId: p.userId,
+                isHost: p.isHost,
+                displayName: p.displayName
+            )
+            if ok {
+                connectionState = .connected
+                startStatusObserver()
+                return
+            }
+        }
+
+        connectionState = .failed
     }
 
     // MARK: - Disconnect
 
     func disconnect() async {
+        statusTask?.cancel()
+        statusTask = nil
+        await teardownChannel()
+        connectionState = .idle
+        onlineUsers = []
+        lastParams = nil
+    }
+
+    private func teardownChannel() async {
         presenceTask?.cancel()
         presenceTask = nil
         playStateStream = nil
@@ -58,13 +149,18 @@ final class RealtimeChannelManager {
             await ch.unsubscribe()
             channel = nil
         }
-        onlineUsers = []
     }
 
-    // MARK: - Reconnect
+    // MARK: - Reconnect (manual / scenePhase)
 
     func reconnect(roomCode: String, userId: String, isHost: Bool, displayName: String?) async {
         await connect(roomCode: roomCode, userId: userId, isHost: isHost, displayName: displayName)
+    }
+
+    /// アラートのリトライボタンから呼ばれる。
+    func retryFromFailure() async {
+        guard case .failed = connectionState else { return }
+        await runRetryLoop()
     }
 
     // MARK: - Broadcast send
