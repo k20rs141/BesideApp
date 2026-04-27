@@ -6,6 +6,10 @@ import Supabase
 final class RealtimeChannelManager {
     var onlineUsers: [PresenceUser] = []
 
+    // Broadcast streams (available after connect)
+    private(set) var playStateStream: AsyncStream<JSONObject>?
+    private(set) var playEventStream: AsyncStream<JSONObject>?
+
     private var channel: RealtimeChannelV2?
     private var presenceTask: Task<Void, Never>?
 
@@ -18,20 +22,25 @@ final class RealtimeChannelManager {
 
         let ch = client.channel("room:\(roomCode)") {
             $0.presence.key = userId
+            $0.broadcast.receiveOwnBroadcasts = false
         }
-
         channel = ch
 
-        // presenceChange の監視は subscribe() 前に登録する必要がある
-        let stream = ch.presenceChange()
+        // Register all streams BEFORE subscribe
+        let presenceStream = ch.presenceChange()
+        let psStream = ch.broadcastStream(event: "play_state")
+        let peStream = ch.broadcastStream(event: "play_event")
 
         try? await ch.subscribeWithError()
 
         let me = PresenceUser(userId: userId, role: isHost ? "host" : "guest", displayName: displayName)
         try? await ch.track(me)
 
+        playStateStream = psStream
+        playEventStream = peStream
+
         presenceTask = Task { [weak self] in
-            for await action in stream {
+            for await action in presenceStream {
                 guard let self else { return }
                 self.applyPresenceAction(action)
             }
@@ -43,6 +52,8 @@ final class RealtimeChannelManager {
     func disconnect() async {
         presenceTask?.cancel()
         presenceTask = nil
+        playStateStream = nil
+        playEventStream = nil
         if let ch = channel {
             await ch.unsubscribe()
             channel = nil
@@ -54,6 +65,12 @@ final class RealtimeChannelManager {
 
     func reconnect(roomCode: String, userId: String, isHost: Bool, displayName: String?) async {
         await connect(roomCode: roomCode, userId: userId, isHost: isHost, displayName: displayName)
+    }
+
+    // MARK: - Broadcast send
+
+    func broadcast<T: Codable>(event: String, message: T) async {
+        try? await channel?.broadcast(event: event, message: message)
     }
 
     // MARK: - Private

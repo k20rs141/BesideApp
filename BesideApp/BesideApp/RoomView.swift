@@ -2,20 +2,21 @@ import SwiftUI
 import Combine
 
 struct RoomView: View {
+    let roomViewModel: RoomViewModel
     var isHost: Bool = true
     var participantCount: Int = 2
     var guestJoining: Bool = false
     var onExit: () -> Void
     var onSelectTrack: (Track) -> Void
 
-    @State private var syncState: SyncState = .idle
-    @State private var currentTrack: Track? = nil
-    @State private var isPaused: Bool = false
-    @State private var progress: Int = 13
     @State private var toastMessage: String? = nil
     @State private var showSearch: Bool = false
+    @State private var showDebug: Bool = false
 
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private var syncState: SyncState { roomViewModel.syncState }
+    private var currentTrack: Track? { roomViewModel.currentTrack }
+    private var isPaused: Bool { roomViewModel.isPaused }
+    private var progress: Int { roomViewModel.progress }
     private var dominant: Color { currentTrack?.dominant ?? .besideCoral }
 
     var body: some View {
@@ -101,14 +102,16 @@ struct RoomView: View {
                 }
                 .animation(.easeOut(duration: 0.25), value: toastMessage != nil)
             }
+
+            // Debug overlay (3本指タップで表示)
+            if showDebug {
+                debugOverlay
+            }
         }
-        .onReceive(timer) { _ in
-            guard syncState == .playing, !isPaused else { return }
-            progress = (progress + 1) % (currentTrack?.duration ?? mockTrack.duration)
-        }
-        .onAppear {
-            if guestJoining { beginAsGuest() }
-        }
+        .onTapGesture(count: 1) { }
+        .simultaneousGesture(
+            TapGesture(count: 3).onEnded { showDebug.toggle() }
+        )
         .sheet(isPresented: $showSearch) {
             SearchSheet(isPresented: $showSearch) { track in
                 selectTrack(track)
@@ -127,10 +130,11 @@ struct RoomView: View {
             Spacer()
 
             Button {
+                UIPasteboard.general.string = roomViewModel.currentRoom.code
                 showToast("コードをコピーしました · Code copied")
             } label: {
                 VStack(spacing: 2) {
-                    Text(mockCode)
+                    Text(roomViewModel.currentRoom.code)
                         .font(.system(size: 17, weight: .medium, design: .monospaced))
                         .foregroundColor(.white)
                         .tracking(3.5)
@@ -190,7 +194,7 @@ struct RoomView: View {
 
     private func progressBar(width: CGFloat) -> some View {
         let duration = currentTrack?.duration ?? mockTrack.duration
-        let ratio = max(0, min(1, Double(progress) / Double(duration)))
+        let ratio = max(0, min(1, Double(progress) / Double(max(1, duration))))
 
         return VStack(spacing: 0) {
             ZStack(alignment: .leading) {
@@ -215,7 +219,7 @@ struct RoomView: View {
             HStack {
                 Text(fmt(progress))
                 Spacer()
-                Text("−\(fmt(duration - progress))")
+                Text("−\(fmt(max(0, duration - progress)))")
             }
             .font(.system(size: 11, design: .monospaced))
             .foregroundColor(.besideTextTertiary)
@@ -338,6 +342,34 @@ struct RoomView: View {
         )
     }
 
+    // MARK: - Debug overlay
+
+    private var debugOverlay: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("🛠 Debug")
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .foregroundColor(.besideCoral)
+            Group {
+                Text("role: \(isHost ? "host" : "guest")")
+                Text("syncState: \(syncState.labelEn)")
+                Text("songId: \(roomViewModel.activeSongId.prefix(12))…")
+                Text("localTime: \(String(format: "%.2f", roomViewModel.musicService.currentTime()))s")
+                Text("drift: \(String(format: "%.0f", roomViewModel.debugLastDriftMs))ms")
+                Text("seq: \(roomViewModel.debugLastSeq)")
+            }
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundColor(.white.opacity(0.8))
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.75))
+        )
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .allowsHitTesting(false)
+    }
+
     // MARK: - Actions
 
     private func showToast(_ msg: String) {
@@ -348,37 +380,29 @@ struct RoomView: View {
     }
 
     private func togglePlayback() {
-        isPaused.toggle()
-        syncState = isPaused ? .paused : .playing
+        Task { await roomViewModel.togglePlayback() }
     }
 
-    func selectTrack(_ track: Track) {
-        currentTrack = track
-        progress = 0
-        isPaused = false
-        syncState = .loading
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                syncState = .playing
-            }
-        }
+    private func selectTrack(_ track: Track) {
         onSelectTrack(track)
-    }
-
-    func beginAsGuest() {
-        syncState = .loading
-        progress = 0
-        currentTrack = mockTrack
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation { syncState = .playing }
-        }
-    }
-
-    func beginAsHost() {
-        syncState = .idle
+        Task { await roomViewModel.playAsHost(track) }
     }
 }
 
 #Preview {
-    RoomView(isHost: true, participantCount: 2, onExit: {}, onSelectTrack: { _ in })
+    let mockRoom = Room(
+        id: "preview",
+        code: "KTOMSO",
+        hostId: "me",
+        isActive: true,
+        currentSongId: nil,
+        createdAt: Date()
+    )
+    RoomView(
+        roomViewModel: RoomViewModel(room: mockRoom, isHost: true),
+        isHost: true,
+        participantCount: 2,
+        onExit: {},
+        onSelectTrack: { _ in }
+    )
 }

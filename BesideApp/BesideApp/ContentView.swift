@@ -43,7 +43,6 @@ struct ContentView: View {
             case .home:
                 HomeView(
                     onCreate: {
-                        // マイルームを開く
                         Task {
                             await homeViewModel.loadMyRoom()
                             guard let room = homeViewModel.myRoom else { return }
@@ -116,7 +115,6 @@ struct ContentView: View {
             if screen == .signIn { screen = .home }
         }
         .task(id: authViewModel.session?.user.id) {
-            // 認証後にマイルームをバックグラウンドで取得しておく
             guard authViewModel.session != nil else { return }
             await homeViewModel.loadMyRoom()
         }
@@ -173,6 +171,7 @@ private struct RoomViewWrapper: View {
 
     var body: some View {
         RoomView(
+            roomViewModel: roomViewModel,
             isHost: roomViewModel.isHost,
             participantCount: max(1, roomViewModel.onlineParticipants.count),
             guestJoining: !roomViewModel.isHost,

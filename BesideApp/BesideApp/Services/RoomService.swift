@@ -101,6 +101,17 @@ final class RoomService {
         return room
     }
 
+    // MARK: - updateCurrentSong
+
+    /// ホストが選曲した曲の ID を DB に保存する (ゲスト後入室時の初期化用)
+    func updateCurrentSong(roomId: String, songId: String) async throws {
+        try await client
+            .from("rooms")
+            .update(["current_song_id": songId])
+            .eq("id", value: roomId)
+            .execute()
+    }
+
     // MARK: - leaveRoom
 
     /// ホスト(マイルーム)退出: ルームは永続化するため DB 変更なし。
