@@ -12,6 +12,7 @@ struct RoomView: View {
     @State private var toastMessage: String? = nil
     @State private var showSearch: Bool = false
     @State private var showDebug: Bool = false
+    @State private var searchViewModel: SongSearchViewModel?
 
     private var syncState: SyncState { roomViewModel.syncState }
     private var currentTrack: Track? { roomViewModel.currentTrack }
@@ -112,9 +113,14 @@ struct RoomView: View {
         .simultaneousGesture(
             TapGesture(count: 3).onEnded { showDebug.toggle() }
         )
+        .task {
+            if roomViewModel.isHost {
+                searchViewModel = SongSearchViewModel(roomViewModel: roomViewModel)
+            }
+        }
         .sheet(isPresented: $showSearch) {
-            SearchSheet(isPresented: $showSearch) { track in
-                selectTrack(track)
+            if let vm = searchViewModel {
+                SearchSheet(isPresented: $showSearch, viewModel: vm)
             }
         }
     }
@@ -381,11 +387,6 @@ struct RoomView: View {
 
     private func togglePlayback() {
         Task { await roomViewModel.togglePlayback() }
-    }
-
-    private func selectTrack(_ track: Track) {
-        onSelectTrack(track)
-        Task { await roomViewModel.playAsHost(track) }
     }
 }
 

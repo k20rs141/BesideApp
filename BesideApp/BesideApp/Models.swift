@@ -59,6 +59,7 @@ struct Track: Identifiable, Equatable {
     let duration: Int // seconds
     let gradientStops: [Gradient.Stop]
     let dominant: Color
+    var artworkURL: URL? = nil
 
     static func == (lhs: Track, rhs: Track) -> Bool { lhs.id == rhs.id }
 }
@@ -109,26 +110,3 @@ let mockParticipants: [Participant] = [
     Participant(id: "kai", name: "Kai", nameJa: "かい",   role: .guest, color: Color(hex: "C49AF4"),  initials: "KA"),
 ]
 
-let catalogTracks: [Track] = [
-    Track(id: "t1", title: "Never Goodbye",    artist: "NCT DREAM",  album: "DREAM( )SCAPE",       duration: 217,
-          gradientStops: [.init(color: Color(hex: "FF5A6E"), location: 0), .init(color: Color(hex: "4A1D3D"), location: 1)],
-          dominant: Color(hex: "FF5A6E")),
-    Track(id: "t2", title: "Smoothie",          artist: "NCT DREAM",  album: "DREAM( )SCAPE",       duration: 194,
-          gradientStops: [.init(color: Color(hex: "F4C26A"), location: 0), .init(color: Color(hex: "B8753C"), location: 1)],
-          dominant: Color(hex: "F4C26A")),
-    Track(id: "t3", title: "Don't Wanna Cry",   artist: "SEVENTEEN",  album: "AL1",                 duration: 223,
-          gradientStops: [.init(color: Color(hex: "6BB6F0"), location: 0), .init(color: Color(hex: "1D3B4A"), location: 1)],
-          dominant: Color(hex: "6BB6F0")),
-    Track(id: "t4", title: "Spring Day",        artist: "BTS",        album: "You Never Walk Alone", duration: 274,
-          gradientStops: [.init(color: Color(hex: "C49AF4"), location: 0), .init(color: Color(hex: "4A1D5E"), location: 1)],
-          dominant: Color(hex: "C49AF4")),
-    Track(id: "t5", title: "Eight",             artist: "IU, SUGA",   album: "Eight",               duration: 169,
-          gradientStops: [.init(color: Color(hex: "7BD389"), location: 0), .init(color: Color(hex: "1D4A2E"), location: 1)],
-          dominant: Color(hex: "7BD389")),
-    Track(id: "t6", title: "Through the Night", artist: "IU",         album: "Palette",             duration: 254,
-          gradientStops: [.init(color: Color(hex: "F5E8D0"), location: 0), .init(color: Color(hex: "806B45"), location: 1)],
-          dominant: Color(hex: "F5E8D0")),
-    Track(id: "t7", title: "Antifreeze",        artist: "White",      album: "Selene",              duration: 234,
-          gradientStops: [.init(color: Color(hex: "A8D8E4"), location: 0), .init(color: Color(hex: "1D3B4A"), location: 1)],
-          dominant: Color(hex: "A8D8E4")),
-]

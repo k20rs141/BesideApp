@@ -102,7 +102,8 @@ extension Song {
                 .init(color: .besideCoral, location: 0.0),
                 .init(color: Color(hex: "4A1D3D"), location: 1.0),
             ],
-            dominant: .besideCoral
+            dominant: .besideCoral,
+            artworkURL: artwork?.url(width: 100, height: 100)
         )
     }
 }

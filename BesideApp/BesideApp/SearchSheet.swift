@@ -2,11 +2,9 @@ import SwiftUI
 
 struct SearchSheet: View {
     @Binding var isPresented: Bool
-    var onSelect: (Track) -> Void
+    var viewModel: SongSearchViewModel
 
     @State private var query: String = ""
-    @State private var results: [Track] = catalogTracks
-    @State private var isSearching: Bool = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -37,7 +35,7 @@ struct SearchSheet: View {
                             .autocorrectionDisabled()
                             .padding(.vertical, 10)
                             .padding(.horizontal, 8)
-                            .onChange(of: query) { runSearch() }
+                            .onChange(of: query) { _, new in viewModel.onSearchTextChanged(new) }
                     }
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -77,11 +75,11 @@ struct SearchSheet: View {
                 // Results
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        if isSearching {
+                        if viewModel.isSearching {
                             ForEach(0..<5, id: \.self) { _ in
                                 SkeletonRow()
                             }
-                        } else if results.isEmpty {
+                        } else if viewModel.results.isEmpty && !query.isEmpty {
                             VStack(spacing: 6) {
                                 Text("該当する曲がありません")
                                     .font(.system(size: 14))
@@ -93,12 +91,10 @@ struct SearchSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 60)
                         } else {
-                            ForEach(results) { track in
+                            ForEach(viewModel.results) { track in
                                 Button {
                                     isPresented = false
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                        onSelect(track)
-                                    }
+                                    viewModel.selectSong(track)
                                 } label: {
                                     TrackRow(track: track)
                                 }
@@ -113,27 +109,11 @@ struct SearchSheet: View {
         .presentationDragIndicator(.hidden)
         .onAppear {
             query = ""
-            results = catalogTracks
-            isSearching = false
+            viewModel.results = []
+            viewModel.isSearching = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
                 searchFocused = true
             }
-        }
-    }
-
-    private func runSearch() {
-        guard !query.isEmpty else {
-            isSearching = false
-            results = catalogTracks
-            return
-        }
-        isSearching = true
-        let q = query.lowercased()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
-            results = catalogTracks.filter {
-                $0.title.lowercased().contains(q) || $0.artist.lowercased().contains(q)
-            }
-            isSearching = false
         }
     }
 }
@@ -145,10 +125,23 @@ private struct TrackRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(LinearGradient(stops: track.gradientStops, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 44, height: 44)
-                .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+            Group {
+                if let url = track.artworkURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            LinearGradient(stops: track.gradientStops, startPoint: .topLeading, endPoint: .bottomTrailing)
+                        }
+                    }
+                } else {
+                    LinearGradient(stops: track.gradientStops, startPoint: .topLeading, endPoint: .bottomTrailing)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(track.title)

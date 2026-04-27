@@ -1,0 +1,111 @@
+import Foundation
+import MusicKit
+import SwiftUI
+
+@Observable
+@MainActor
+final class SongSearchViewModel {
+    var results: [Track] = []
+    var isSearching: Bool = false
+
+    private let roomViewModel: RoomViewModel
+    private var debounceTask: Task<Void, Never>?
+
+    init(roomViewModel: RoomViewModel) {
+        self.roomViewModel = roomViewModel
+    }
+
+    func onSearchTextChanged(_ text: String) {
+        debounceTask?.cancel()
+        guard !text.isEmpty else {
+            results = []
+            isSearching = false
+            return
+        }
+        isSearching = true
+        debounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            await search(text)
+        }
+    }
+
+    func selectSong(_ track: Track) {
+        Task { await roomViewModel.playAsHost(track) }
+    }
+
+    private func search(_ query: String) async {
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            isSearching = false
+            return
+        }
+        let storefront = Locale.current.region?.identifier.lowercased() ?? "jp"
+        guard let url = URL(string: "https://api.music.apple.com/v1/catalog/\(storefront)/search?term=\(encoded)&types=songs&limit=20&l=ja-JP") else {
+            isSearching = false
+            return
+        }
+        do {
+            let dataResponse = try await MusicDataRequest(urlRequest: URLRequest(url: url)).response()
+            let decoded = try JSONDecoder().decode(AppleMusicSearchResponse.self, from: dataResponse.data)
+            results = decoded.results.songs?.data.compactMap { $0.toTrack() } ?? []
+        } catch {
+            print("[SongSearchViewModel] search error:", error)
+            results = []
+        }
+        isSearching = false
+    }
+}
+
+// MARK: - Apple Music API response types
+
+private struct AppleMusicSearchResponse: Decodable {
+    let results: Results
+
+    struct Results: Decodable {
+        let songs: Songs?
+    }
+
+    struct Songs: Decodable {
+        let data: [SongResource]
+    }
+
+    struct SongResource: Decodable {
+        let id: String
+        let attributes: SongAttributes?
+
+        func toTrack() -> Track? {
+            guard let attrs = attributes else { return nil }
+            let artworkURL = attrs.artwork.flatMap { art -> URL? in
+                let urlStr = art.url
+                    .replacingOccurrences(of: "{w}", with: "100")
+                    .replacingOccurrences(of: "{h}", with: "100")
+                return URL(string: urlStr)
+            }
+            return Track(
+                id: id,
+                title: attrs.name,
+                artist: attrs.artistName,
+                album: attrs.albumName ?? "",
+                duration: (attrs.durationInMillis ?? 0) / 1000,
+                gradientStops: [
+                    .init(color: .besideCoral, location: 0.0),
+                    .init(color: Color(hex: "4A1D3D"), location: 1.0),
+                ],
+                dominant: .besideCoral,
+                artworkURL: artworkURL
+            )
+        }
+    }
+
+    struct SongAttributes: Decodable {
+        let name: String
+        let artistName: String
+        let albumName: String?
+        let durationInMillis: Int?
+        let artwork: ArtworkInfo?
+    }
+
+    struct ArtworkInfo: Decodable {
+        let url: String
+    }
+}
