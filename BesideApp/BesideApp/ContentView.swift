@@ -122,13 +122,14 @@ struct ContentView: View {
                         roomViewModel: vm,
                         authViewModel: authViewModel,
                         onExit: {
-                            Task {
-                                await vm.leaveRoom()
-                                roomViewModel = nil
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    screen = .home
-                                }
+                            // 画面遷移を先に行い、後始末はバックグラウンドで(WS 切断や DB 更新が
+                            // 遅延しても画面が固まらないように)
+                            let leavingVM = vm
+                            roomViewModel = nil
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                screen = .home
                             }
+                            Task { await leavingVM.leaveRoom() }
                         }
                     )
                     .transition(.opacity)

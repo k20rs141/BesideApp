@@ -128,7 +128,14 @@ final class RealtimeChannelManager {
         playStateStream = nil
         playEventStream = nil
         if let ch = channel {
-            await ch.unsubscribe()
+            // unsubscribe は status が .unsubscribed になるまで await する。
+            // WS が死んでいると永遠に返らないので 2 秒でタイムアウトさせる。
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await ch.unsubscribe() }
+                group.addTask { try? await Task.sleep(for: .seconds(2)) }
+                _ = await group.next()
+                group.cancelAll()
+            }
             channel = nil
         }
     }

@@ -168,12 +168,9 @@ final class RoomViewModel {
         isPaused = false
 
         do {
-            // Apple Music カタログで検索
-            guard let songId = try await musicService.searchSongId(title: track.title, artist: track.artist) else {
-                roomAlert = .songNotInCatalog
-                syncState = .idle
-                return
-            }
+            // SearchSheet が返す Track.id は Apple Music の song ID なのでそのまま使う。
+            // (title+artist で再検索すると同名曲・特殊文字で稀に外れて songNotInCatalog になっていた)
+            let songId = track.id
             activeSongId = songId
             try await musicService.load(songId: songId, at: 0)
 
@@ -281,7 +278,8 @@ final class RoomViewModel {
         }
     }
 
-    /// ゲスト後入室: DB の current_song_id があれば再生開始
+    /// ゲスト後入室: DB の current_song_id があればロードだけ行い、再生は PlayState/PlayEvent を待つ。
+    /// ホストがオンラインでない/再生中でないのに古い曲を勝手に流さないため。
     private func syncToCurrentRoomState() async {
         guard let songId = currentRoom.currentSongId, !songId.isEmpty else { return }
         guard activeSongId != songId else { return }
@@ -289,12 +287,15 @@ final class RoomViewModel {
         activeSongId = songId
         syncState = .loading
         do {
-            // 開始位置 0 でロード。最初の PlayState で正確な位置に補正される
             try await musicService.load(songId: songId, at: 0)
+            // 即時 pause: ホストが現に再生していれば PlayState (isPlaying=true) で再開される。
+            // ホストがオフライン/未選曲なら静かに待機する。
+            musicService.pause()
             if let song = musicService.currentSong {
                 currentTrack = song.toTrack()
             }
-            syncState = .playing
+            syncState = .paused
+            isPaused = true
         } catch {
             print("[RoomViewModel] syncToCurrentRoomState error:", error)
             roomAlert = (error as? MusicLoadError) == .timeout ? .songLoadTimeout : .songNotInCatalog
@@ -460,8 +461,14 @@ final class RoomViewModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self else { return }
-                // 再生していない/まだ曲が始まっていない時は対象外
+                // 再生中(activeSongId 設定済み)かつホストが presence にいなければオフライン扱い
                 guard !self.activeSongId.isEmpty else { continue }
+                let hostOnline = self.channelManager.onlineUsers.contains { $0.role == "host" }
+                if hostOnline {
+                    // presence にホストがいる: 通知済みフラグもリセット(再オンライン後の再判定用)
+                    self.hostOfflineNotified = false
+                    continue
+                }
                 let elapsed = Date().timeIntervalSince(self.lastPlayStateAt)
                 if elapsed > 5, !self.hostOfflineNotified {
                     self.hostOfflineNotified = true

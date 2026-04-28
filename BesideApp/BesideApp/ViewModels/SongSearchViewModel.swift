@@ -69,9 +69,15 @@ final class SongSearchViewModel {
         }
         do {
             let dataResponse = try await MusicDataRequest(urlRequest: URLRequest(url: url)).response()
+            try Task.checkCancellation()
             let decoded = try JSONDecoder().decode(AppleMusicSearchResponse.self, from: dataResponse.data)
             results = decoded.results.songs?.data.compactMap { $0.toTrack() } ?? []
             searchError = nil
+        } catch is CancellationError {
+            // debounce 連打で前回の検索が打ち切られただけ。エラー扱いしない。
+            return
+        } catch let urlErr as URLError where urlErr.code == .cancelled {
+            return
         } catch {
             print("[SongSearchViewModel] search error:", error)
             results = []
