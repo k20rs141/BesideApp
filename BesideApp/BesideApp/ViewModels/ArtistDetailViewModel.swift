@@ -1,0 +1,147 @@
+import Foundation
+import MusicKit
+import SwiftUI
+
+@Observable
+@MainActor
+final class ArtistDetailViewModel {
+    let artist: Artist
+    var topSongs: [Track] = []
+    var albums: [Album] = []
+    var isLoading: Bool = false
+    var loadError: String?
+
+    private let roomViewModel: RoomViewModel
+    private var loadTask: Task<Void, Never>?
+
+    init(artist: Artist, roomViewModel: RoomViewModel) {
+        self.artist = artist
+        self.roomViewModel = roomViewModel
+    }
+
+    func load() {
+        guard !isLoading else { return }
+        isLoading = true
+        loadError = nil
+        loadTask?.cancel()
+        loadTask = Task { [artistID = artist.id] in
+            async let songsResult: [Track] = Self.fetchTopSongs(artistID: artistID)
+            async let albumsResult: [Album] = Self.fetchAlbums(artistID: artistID)
+            do {
+                let (songs, albums) = try await (songsResult, albumsResult)
+                guard !Task.isCancelled else { return }
+                self.topSongs = songs
+                self.albums = albums
+                self.isLoading = false
+            } catch is CancellationError {
+                return
+            } catch let urlErr as URLError where urlErr.code == .cancelled {
+                return
+            } catch {
+                print("[ArtistDetailViewModel] load error:", error)
+                self.loadError = "読み込みできません。リトライしてください"
+                self.isLoading = false
+            }
+        }
+    }
+
+    func selectSong(_ track: Track) {
+        Task { await roomViewModel.playAsHost(track) }
+    }
+
+    // MARK: - Apple Music API
+
+    private static func fetchTopSongs(artistID: String) async throws -> [Track] {
+        let storefront = Locale.current.region?.identifier.lowercased() ?? "jp"
+        guard let url = URL(string: "https://api.music.apple.com/v1/catalog/\(storefront)/artists/\(artistID)/view/top-songs?limit=20&l=ja-JP") else {
+            return []
+        }
+        let resp = try await MusicDataRequest(urlRequest: URLRequest(url: url)).response()
+        try Task.checkCancellation()
+        let decoded = try JSONDecoder().decode(TopSongsResponse.self, from: resp.data)
+        return decoded.data?.compactMap { $0.toTrack() } ?? []
+    }
+
+    private static func fetchAlbums(artistID: String) async throws -> [Album] {
+        let storefront = Locale.current.region?.identifier.lowercased() ?? "jp"
+        guard let url = URL(string: "https://api.music.apple.com/v1/catalog/\(storefront)/artists/\(artistID)/albums?limit=20&l=ja-JP") else {
+            return []
+        }
+        let resp = try await MusicDataRequest(urlRequest: URLRequest(url: url)).response()
+        try Task.checkCancellation()
+        let decoded = try JSONDecoder().decode(AlbumsResponse.self, from: resp.data)
+        return decoded.data?.compactMap { $0.toAlbum() } ?? []
+    }
+}
+
+// MARK: - Apple Music response types
+
+private struct TopSongsResponse: Decodable {
+    let data: [SongResource]?
+
+    struct SongResource: Decodable {
+        let id: String
+        let attributes: SongAttributes?
+
+        func toTrack() -> Track? {
+            guard let attrs = attributes else { return nil }
+            let artworkURL = attrs.artwork.flatMap { art -> URL? in
+                let urlStr = art.url
+                    .replacingOccurrences(of: "{w}", with: "100")
+                    .replacingOccurrences(of: "{h}", with: "100")
+                return URL(string: urlStr)
+            }
+            return Track(
+                id: id,
+                title: attrs.name,
+                artist: attrs.artistName,
+                album: attrs.albumName ?? "",
+                duration: (attrs.durationInMillis ?? 0) / 1000,
+                gradientStops: [
+                    .init(color: .besideCoral, location: 0.0),
+                    .init(color: Color(hex: "4A1D3D"), location: 1.0),
+                ],
+                dominant: .besideCoral,
+                artworkURL: artworkURL
+            )
+        }
+    }
+
+    struct SongAttributes: Decodable {
+        let name: String
+        let artistName: String
+        let albumName: String?
+        let durationInMillis: Int?
+        let artwork: ArtworkInfo?
+    }
+}
+
+private struct AlbumsResponse: Decodable {
+    let data: [AlbumResource]?
+
+    struct AlbumResource: Decodable {
+        let id: String
+        let attributes: AlbumAttributes?
+
+        func toAlbum() -> Album? {
+            guard let attrs = attributes else { return nil }
+            let artworkURL = attrs.artwork.flatMap { art -> URL? in
+                let urlStr = art.url
+                    .replacingOccurrences(of: "{w}", with: "300")
+                    .replacingOccurrences(of: "{h}", with: "300")
+                return URL(string: urlStr)
+            }
+            return Album(id: id, title: attrs.name, artistName: attrs.artistName, artworkURL: artworkURL)
+        }
+    }
+
+    struct AlbumAttributes: Decodable {
+        let name: String
+        let artistName: String
+        let artwork: ArtworkInfo?
+    }
+}
+
+private struct ArtworkInfo: Decodable {
+    let url: String
+}

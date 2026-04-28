@@ -12,7 +12,7 @@ struct RoomView: View {
     @State private var toastMessage: String? = nil
     @State private var showSearch: Bool = false
     @State private var showDebug: Bool = false
-    @State private var searchViewModel: SongSearchViewModel?
+    @State private var searchViewModel: SearchViewModel?
 
     private var syncState: SyncState { roomViewModel.syncState }
     private var currentTrack: Track? { roomViewModel.currentTrack }
@@ -115,7 +115,7 @@ struct RoomView: View {
         )
         .task {
             if roomViewModel.isHost {
-                searchViewModel = SongSearchViewModel(roomViewModel: roomViewModel)
+                searchViewModel = SearchViewModel(roomViewModel: roomViewModel)
             }
         }
         .sheet(isPresented: $showSearch) {

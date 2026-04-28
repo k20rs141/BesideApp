@@ -2,96 +2,153 @@ import SwiftUI
 
 struct SearchSheet: View {
     @Binding var isPresented: Bool
-    var viewModel: SongSearchViewModel
+    var viewModel: SearchViewModel
 
     @State private var query: String = ""
+    @State private var navPath: [Artist] = []
     @FocusState private var searchFocused: Bool
 
     var body: some View {
-        ZStack {
-            Color.besideSurface.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Handle
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color.white.opacity(0.18))
-                    .frame(width: 36, height: 5)
-                    .padding(.top, 12)
-                    .padding(.bottom, 18)
-
-                // Search bar + cancel
-                HStack(spacing: 10) {
-                    HStack(spacing: 0) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 15))
-                            .foregroundColor(.besideTextTertiary)
-                            .padding(.leading, 12)
-
-                        TextField("曲名・アーティスト  ·  Songs, artists", text: $query)
-                            .font(.system(size: 15))
-                            .foregroundColor(.white)
-                            .tint(.besideCoral)
-                            .focused($searchFocused)
-                            .autocorrectionDisabled()
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 8)
-                            .onChange(of: query) { _, new in viewModel.onSearchTextChanged(new) }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(hex: "1F1F1F"))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-                            )
-                    )
-                    .frame(height: 40)
-
-                    Button {
+        NavigationStack(path: $navPath) {
+            ZStack {
+                Color.besideSurface.ignoresSafeArea()
+                searchRoot
+            }
+            .navigationBarHidden(true)
+            .navigationDestination(for: Artist.self) { artist in
+                ArtistDetailView(
+                    viewModel: ArtistDetailViewModel(artist: artist, roomViewModel: viewModel.roomViewModel),
+                    onSelectTrack: { track in
                         isPresented = false
-                    } label: {
-                        Text("キャンセル")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.besideCoral)
+                        viewModel.selectSong(track)
                     }
-                }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 14)
+                )
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+        .onAppear {
+            query = ""
+            viewModel.songs = []
+            viewModel.artists = []
+            viewModel.isSearching = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                searchFocused = true
+            }
+        }
+    }
 
-                // Section header (when not searching)
-                if query.isEmpty {
-                    HStack {
-                        Text("最近聴いた曲 · Recently played")
-                            .font(.system(size: 11))
-                            .foregroundColor(.besideTextTertiary)
-                            .tracking(0.6)
-                            .textCase(.uppercase)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 10)
-                }
+    // MARK: - Root
 
-                // Results
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        if viewModel.isSearching {
-                            ForEach(0..<5, id: \.self) { _ in
-                                SkeletonRow()
+    private var searchRoot: some View {
+        VStack(spacing: 0) {
+            // Handle
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 36, height: 5)
+                .padding(.top, 12)
+                .padding(.bottom, 18)
+
+            // Search bar + cancel
+            HStack(spacing: 10) {
+                HStack(spacing: 0) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15))
+                        .foregroundColor(.besideTextTertiary)
+                        .padding(.leading, 12)
+
+                    TextField("曲名・アーティスト  ·  Songs, artists", text: $query)
+                        .font(.system(size: 15))
+                        .foregroundColor(.white)
+                        .tint(.besideCoral)
+                        .focused($searchFocused)
+                        .autocorrectionDisabled()
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
+                        .onChange(of: query) { _, new in viewModel.onSearchTextChanged(new) }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(hex: "1F1F1F"))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                        )
+                )
+                .frame(height: 40)
+
+                Button {
+                    isPresented = false
+                } label: {
+                    Text("キャンセル")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.besideCoral)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 14)
+
+            // Section header (when not searching)
+            if query.isEmpty {
+                HStack {
+                    Text("最近聴いた曲 · Recently played")
+                        .font(.system(size: 11))
+                        .foregroundColor(.besideTextTertiary)
+                        .tracking(0.6)
+                        .textCase(.uppercase)
+                    Spacer()
+                }
+                .padding(.horizontal, 22)
+                .padding(.bottom, 10)
+            }
+
+            // Results
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if viewModel.isSearching {
+                        ForEach(0..<5, id: \.self) { _ in
+                            SkeletonRow()
+                        }
+                    } else if viewModel.songs.isEmpty && viewModel.artists.isEmpty && !query.isEmpty {
+                        VStack(spacing: 6) {
+                            Text("該当する結果がありません")
+                                .font(.system(size: 14))
+                                .foregroundColor(.besideTextSecondary)
+                            Text("No results")
+                                .font(.system(size: 11))
+                                .foregroundColor(.besideTextTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 60)
+                    } else {
+                        if !viewModel.artists.isEmpty {
+                            sectionHeader("アーティスト · Artists")
+                                .padding(.bottom, 12)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(alignment: .top, spacing: 16) {
+                                    ForEach(viewModel.artists) { artist in
+                                        NavigationLink(value: artist) {
+                                            ArtistAvatarCell(artist: artist)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal, 18)
                             }
-                        } else if viewModel.results.isEmpty && !query.isEmpty {
-                            VStack(spacing: 6) {
-                                Text("該当する曲がありません")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.besideTextSecondary)
-                                Text("No results")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.besideTextTertiary)
+                            .padding(.bottom, 18)
+
+                            if !viewModel.songs.isEmpty {
+                                Divider()
+                                    .background(Color.besideHairline)
+                                    .padding(.horizontal, 18)
+                                    .padding(.bottom, 14)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 60)
-                        } else {
-                            ForEach(viewModel.results) { track in
+                        }
+
+                        if !viewModel.songs.isEmpty {
+                            sectionHeader("曲 · Songs")
+                                .padding(.bottom, 4)
+                            ForEach(viewModel.songs) { track in
                                 Button {
                                     isPresented = false
                                     viewModel.selectSong(track)
@@ -101,20 +158,22 @@ struct SearchSheet: View {
                             }
                         }
                     }
-                    .padding(.bottom, 24)
                 }
+                .padding(.bottom, 24)
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
-        .onAppear {
-            query = ""
-            viewModel.results = []
-            viewModel.isSearching = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
-                searchFocused = true
-            }
+    }
+
+    private func sectionHeader(_ text: String) -> some View {
+        HStack {
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundColor(.besideTextTertiary)
+                .tracking(0.6)
+                .textCase(.uppercase)
+            Spacer()
         }
+        .padding(.horizontal, 22)
     }
 }
 
@@ -164,6 +223,55 @@ private struct TrackRow: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 8)
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Artist avatar cell
+
+private struct ArtistAvatarCell: View {
+    let artist: Artist
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Group {
+                if let url = artist.artworkURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            placeholder
+                        }
+                    }
+                } else {
+                    placeholder
+                }
+            }
+            .frame(width: 80, height: 80)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.35), radius: 5, y: 2)
+
+            Text(artist.name)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(width: 88)
+        }
+    }
+
+    private var placeholder: some View {
+        LinearGradient(
+            colors: [Color.besideCoral.opacity(0.55), Color(hex: "4A1D3D")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay(
+            Image(systemName: "person.fill")
+                .font(.system(size: 28))
+                .foregroundColor(.white.opacity(0.7))
+        )
     }
 }
 

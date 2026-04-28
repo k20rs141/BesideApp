@@ -4,13 +4,14 @@ import SwiftUI
 
 @Observable
 @MainActor
-final class SongSearchViewModel {
-    var results: [Track] = []
+final class SearchViewModel {
+    var songs: [Track] = []
+    var artists: [Artist] = []
     var isSearching: Bool = false
     var searchError: String?
     var subscriptionMissing: Bool = false
 
-    private let roomViewModel: RoomViewModel
+    let roomViewModel: RoomViewModel
     private var debounceTask: Task<Void, Never>?
 
     init(roomViewModel: RoomViewModel) {
@@ -27,14 +28,15 @@ final class SongSearchViewModel {
                 searchError = "Apple Music の契約が必要です"
             }
         } catch {
-            print("[SongSearchViewModel] subscription check error:", error)
+            print("[SearchViewModel] subscription check error:", error)
         }
     }
 
     func onSearchTextChanged(_ text: String) {
         debounceTask?.cancel()
         guard !text.isEmpty else {
-            results = []
+            songs = []
+            artists = []
             isSearching = false
             searchError = subscriptionMissing ? "Apple Music の契約が必要です" : nil
             return
@@ -63,7 +65,7 @@ final class SongSearchViewModel {
             return
         }
         let storefront = Locale.current.region?.identifier.lowercased() ?? "jp"
-        guard let url = URL(string: "https://api.music.apple.com/v1/catalog/\(storefront)/search?term=\(encoded)&types=songs&limit=20&l=ja-JP") else {
+        guard let url = URL(string: "https://api.music.apple.com/v1/catalog/\(storefront)/search?term=\(encoded)&types=songs,artists&limit=20&l=ja-JP") else {
             isSearching = false
             return
         }
@@ -71,16 +73,17 @@ final class SongSearchViewModel {
             let dataResponse = try await MusicDataRequest(urlRequest: URLRequest(url: url)).response()
             try Task.checkCancellation()
             let decoded = try JSONDecoder().decode(AppleMusicSearchResponse.self, from: dataResponse.data)
-            results = decoded.results.songs?.data.compactMap { $0.toTrack() } ?? []
+            songs = decoded.results.songs?.data.compactMap { $0.toTrack() } ?? []
+            artists = decoded.results.artists?.data.compactMap { $0.toArtist() } ?? []
             searchError = nil
         } catch is CancellationError {
-            // debounce 連打で前回の検索が打ち切られただけ。エラー扱いしない。
             return
         } catch let urlErr as URLError where urlErr.code == .cancelled {
             return
         } catch {
-            print("[SongSearchViewModel] search error:", error)
-            results = []
+            print("[SearchViewModel] search error:", error)
+            songs = []
+            artists = []
             searchError = "検索できません。リトライしてください"
         }
         isSearching = false
@@ -94,10 +97,15 @@ private struct AppleMusicSearchResponse: Decodable {
 
     struct Results: Decodable {
         let songs: Songs?
+        let artists: Artists?
     }
 
     struct Songs: Decodable {
         let data: [SongResource]
+    }
+
+    struct Artists: Decodable {
+        let data: [ArtistResource]
     }
 
     struct SongResource: Decodable {
@@ -128,11 +136,32 @@ private struct AppleMusicSearchResponse: Decodable {
         }
     }
 
+    struct ArtistResource: Decodable {
+        let id: String
+        let attributes: ArtistAttributes?
+
+        func toArtist() -> Artist? {
+            guard let attrs = attributes else { return nil }
+            let artworkURL = attrs.artwork.flatMap { art -> URL? in
+                let urlStr = art.url
+                    .replacingOccurrences(of: "{w}", with: "300")
+                    .replacingOccurrences(of: "{h}", with: "300")
+                return URL(string: urlStr)
+            }
+            return Artist(id: id, name: attrs.name, artworkURL: artworkURL)
+        }
+    }
+
     struct SongAttributes: Decodable {
         let name: String
         let artistName: String
         let albumName: String?
         let durationInMillis: Int?
+        let artwork: ArtworkInfo?
+    }
+
+    struct ArtistAttributes: Decodable {
+        let name: String
         let artwork: ArtworkInfo?
     }
 
