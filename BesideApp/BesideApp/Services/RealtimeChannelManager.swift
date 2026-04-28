@@ -22,7 +22,6 @@ final class RealtimeChannelManager {
 
     private var channel: RealtimeChannelV2?
     private var presenceTask: Task<Void, Never>?
-    private var statusTask: Task<Void, Never>?
 
     private let client = SupabaseManager.shared.client
 
@@ -41,7 +40,6 @@ final class RealtimeChannelManager {
         let connected = await attemptSubscribe(roomCode: roomCode, userId: userId, isHost: isHost, displayName: displayName)
         if connected {
             connectionState = .connected
-            startStatusObserver()
         } else {
             await runRetryLoop()
         }
@@ -83,23 +81,10 @@ final class RealtimeChannelManager {
         return true
     }
 
-    /// status が想定外に .unsubscribed に落ちたら自動再接続する。
-    private func startStatusObserver() {
-        statusTask?.cancel()
-        guard let ch = channel else { return }
-        statusTask = Task { [weak self] in
-            for await status in ch.statusChange {
-                guard let self else { return }
-                if status == .unsubscribed,
-                   case .connected = self.connectionState {
-                    print("[RealtimeChannelManager] unexpected unsubscribe — reconnecting")
-                    await self.runRetryLoop()
-                }
-            }
-        }
-    }
-
     /// 3秒 × 3回のリトライ。最終失敗で .failed をセット。
+    /// 初回 connect 失敗、または retryFromFailure() からのみ呼ばれる。
+    /// 通常運用中の WebSocket 切断は supabase-swift が内部的に再接続するため、
+    /// アプリレベルでは介入しない(チャネル再構築すると broadcast 受信が壊れる)。
     private func runRetryLoop() async {
         guard let p = lastParams else {
             connectionState = .failed
@@ -121,7 +106,6 @@ final class RealtimeChannelManager {
             )
             if ok {
                 connectionState = .connected
-                startStatusObserver()
                 return
             }
         }
@@ -132,8 +116,6 @@ final class RealtimeChannelManager {
     // MARK: - Disconnect
 
     func disconnect() async {
-        statusTask?.cancel()
-        statusTask = nil
         await teardownChannel()
         connectionState = .idle
         onlineUsers = []

@@ -140,8 +140,16 @@ final class RoomViewModel {
     }
 
     /// 接続失敗アラートのリトライボタンから呼ぶ。
+    /// 再接続後に listener を貼り直す必要があるので、enterRoom 後半と同じ手順を再実行する。
     func retryConnection() async {
         await channelManager.retryFromFailure()
+        guard case .connected = channelManager.connectionState else { return }
+        if isHost {
+            startHostBroadcast()
+        } else {
+            startGuestListeners()
+            startHostOfflineWatcher()
+        }
     }
 
     // MARK: - Host actions
@@ -253,7 +261,10 @@ final class RoomViewModel {
         stateListenerTask = Task { [weak self] in
             for await json in psStream {
                 guard let self else { return }
-                if let state = try? json.decode(as: PlayState.self) {
+                // broadcastStream は envelope {event, payload, type} を yield するので
+                // 内側の "payload" を取り出してからデコードする
+                guard let payload = json["payload"] else { continue }
+                if let state = try? payload.decode(as: PlayState.self) {
                     await self.applyPlayState(state)
                 }
             }
@@ -262,7 +273,8 @@ final class RoomViewModel {
         eventListenerTask = Task { [weak self] in
             for await json in peStream {
                 guard let self else { return }
-                if let event = try? json.decode(as: PlayEvent.self) {
+                guard let payload = json["payload"] else { continue }
+                if let event = try? payload.decode(as: PlayEvent.self) {
                     await self.applyPlayEvent(event)
                 }
             }
