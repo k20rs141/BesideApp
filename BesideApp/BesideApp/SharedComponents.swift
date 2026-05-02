@@ -22,7 +22,7 @@ struct SpinnerView: View {
 
 struct SyncBadgeView: View {
     let state: SyncState
-    var accent: Color = .besideCoral
+    var accent: Color = .pairtuneCoral
     @State private var pulsing = false
 
     var body: some View {
@@ -81,18 +81,18 @@ struct AvatarView: View {
                 .overlay(
                     Text(participant.initials)
                         .font(.system(size: size * 0.34, weight: .semibold))
-                        .foregroundColor(.besideBase)
+                        .foregroundColor(.pairtuneBase)
                 )
                 .overlay(Circle().stroke(Color(hex: "1A1A1A"), lineWidth: 1.5))
 
             if showCrown && participant.role == .host {
                 Circle()
-                    .fill(Color.besideCream)
+                    .fill(Color.pairtuneCream)
                     .frame(width: 16, height: 16)
                     .overlay(
                         Image(systemName: "crown.fill")
                             .font(.system(size: 8))
-                            .foregroundColor(.besideBase)
+                            .foregroundColor(.pairtuneBase)
                     )
                     .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
                     .offset(x: 2, y: -2)
@@ -106,7 +106,7 @@ struct AvatarView: View {
 struct FrostedCircleButton: View {
     let icon: String
     var size: CGFloat = 38
-    var color: Color = .besideTextSecondary
+    var color: Color = .pairtuneTextSecondary
     var action: () -> Void
 
     var body: some View {
@@ -132,12 +132,12 @@ struct ToastView: View {
     var body: some View {
         Text(message)
             .font(.system(size: 13, weight: .medium))
-            .foregroundColor(.besideBase)
+            .foregroundColor(.pairtuneBase)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .background(
                 Capsule()
-                    .fill(Color.besideCream.opacity(0.96))
+                    .fill(Color.pairtuneCream.opacity(0.96))
                     .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
             )
     }
@@ -314,7 +314,7 @@ private struct VinylDiscBody: View {
             return AnyShapeStyle(LinearGradient(stops: stops, startPoint: .topLeading, endPoint: .bottomTrailing))
         }
         return AnyShapeStyle(LinearGradient(
-            colors: [Color.besideCoral.opacity(0.7), Color(hex: "4A1D3D")],
+            colors: [Color.pairtuneCoral.opacity(0.7), Color(hex: "4A1D3D")],
             startPoint: .topLeading, endPoint: .bottomTrailing
         ))
     }

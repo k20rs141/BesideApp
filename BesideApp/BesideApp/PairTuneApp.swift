@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct BesideAppApp: App {
+struct PairTuneApp: App {
     @State private var authViewModel = AuthViewModel()
 
     var body: some Scene {

@@ -5,9 +5,9 @@
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>
-	<string>$(SUPABASE_URL)</string>
+	<string>https://$(SUPABASE_URL_HOST)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Beside</string>
+	<string>PairTune</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSAppleMusicUsageDescription</key>

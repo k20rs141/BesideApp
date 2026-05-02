@@ -2,26 +2,26 @@ import SwiftUI
 
 extension Color {
     // Base palette
-    static let besideBase          = Color(hex: "0A0A0A")
-    static let besideSurface       = Color(hex: "141414")
-    static let besideSurfaceSheet  = Color(hex: "1A1A1A")
-    static let besideSurfaceHi     = Color(hex: "1C1C1C")
-    static let besideHairline      = Color(hex: "262626")
+    static let pairtuneBase          = Color(hex: "0A0A0A")
+    static let pairtuneSurface       = Color(hex: "141414")
+    static let pairtuneSurfaceSheet  = Color(hex: "1A1A1A")
+    static let pairtuneSurfaceHi     = Color(hex: "1C1C1C")
+    static let pairtuneHairline      = Color(hex: "262626")
 
     // Accent
-    static let besideCoral  = Color(hex: "FF5A6E")
-    static let besideCream  = Color(hex: "F5E8D0")
+    static let pairtuneCoral  = Color(hex: "FF5A6E")
+    static let pairtuneCream  = Color(hex: "F5E8D0")
 
     // Text
-    static let besideTextPrimary    = Color.white
-    static let besideTextSecondary  = Color(hex: "A8A8A8")
-    static let besideTextTertiary   = Color(hex: "6B6B6B")
-    static let besideTextQuaternary = Color(hex: "3F3F3F")
+    static let pairtuneTextPrimary    = Color.white
+    static let pairtuneTextSecondary  = Color(hex: "A8A8A8")
+    static let pairtuneTextTertiary   = Color(hex: "6B6B6B")
+    static let pairtuneTextQuaternary = Color(hex: "3F3F3F")
 
     // Status
-    static let besideSyncOk   = Color(hex: "7BD389")
-    static let besideSyncWarn = Color(hex: "F4C26A")
-    static let besideSyncBad  = Color(hex: "E85B6B")
+    static let pairtuneSyncOk   = Color(hex: "7BD389")
+    static let pairtuneSyncWarn = Color(hex: "F4C26A")
+    static let pairtuneSyncBad  = Color(hex: "E85B6B")
 
     init(hex: String) {
         let h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

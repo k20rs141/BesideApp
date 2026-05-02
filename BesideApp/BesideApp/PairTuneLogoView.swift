@@ -1,10 +1,10 @@
 import SwiftUI
 
-// MARK: - Beside Logo (two overlapping circles — shared space)
+// MARK: - PairTune Logo (two overlapping circles — shared space)
 
-struct BesideLogoView: View {
+struct PairTuneLogoView: View {
     var size: CGFloat = 48
-    var color: Color = .besideCoral
+    var color: Color = .pairtuneCoral
     var glow: Bool = false
 
     var body: some View {
@@ -40,13 +40,13 @@ struct BesideLogoView: View {
 
 // MARK: - Wordmark
 
-struct BesideWordmark: View {
+struct PairTuneWordmark: View {
     var size: CGFloat = 22
     var color: Color = .white
     var subdued: Bool = false
 
     var body: some View {
-        Text("beside")
+        Text("pairtune")
             .font(.system(size: size, weight: .light, design: .default))
             .tracking(size * 0.04)
             .foregroundColor(color.opacity(subdued ? 0.85 : 1))
@@ -55,25 +55,25 @@ struct BesideWordmark: View {
 
 // MARK: - Lockup (logo + wordmark)
 
-struct BesideLockup: View {
+struct PairTuneLockup: View {
     var size: CGFloat = 28
     var color: Color = .white
-    var accent: Color = .besideCoral
+    var accent: Color = .pairtuneCoral
 
     var body: some View {
         HStack(spacing: size * 0.5) {
-            BesideLogoView(size: size * 1.6, color: accent)
-            BesideWordmark(size: size, color: color)
+            PairTuneLogoView(size: size * 1.6, color: accent)
+            PairTuneWordmark(size: size, color: color)
         }
     }
 }
 
 #Preview {
     VStack(spacing: 32) {
-        BesideLogoView(size: 92, color: .besideCoral, glow: true)
-        BesideWordmark(size: 36)
-        BesideLockup(size: 28)
+        PairTuneLogoView(size: 92, color: .pairtuneCoral, glow: true)
+        PairTuneWordmark(size: 36)
+        PairTuneLockup(size: 28)
     }
     .padding(40)
-    .background(Color.besideBase)
+    .background(Color.pairtuneBase)
 }

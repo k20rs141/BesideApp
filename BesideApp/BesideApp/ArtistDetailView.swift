@@ -14,7 +14,7 @@ struct ArtistDetailView: View {
                 if viewModel.isLoading && viewModel.topSongs.isEmpty && viewModel.albums.isEmpty {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(.besideTextSecondary)
+                        .tint(.pairtuneTextSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
                 } else {
@@ -50,17 +50,17 @@ struct ArtistDetailView: View {
                     if let err = viewModel.loadError {
                         Text(err)
                             .font(.system(size: 13))
-                            .foregroundColor(.besideSyncBad)
+                            .foregroundColor(.pairtuneSyncBad)
                             .padding(.top, 24)
                     }
                 }
             }
             .padding(.bottom, 24)
         }
-        .background(Color.besideSurface.ignoresSafeArea())
+        .background(Color.pairtuneSurface.ignoresSafeArea())
         .navigationTitle(viewModel.artist.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.besideSurface, for: .navigationBar)
+        .toolbarBackground(Color.pairtuneSurface, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task {
@@ -104,7 +104,7 @@ struct ArtistDetailView: View {
 
     private var placeholderArtwork: some View {
         LinearGradient(
-            colors: [Color.besideCoral.opacity(0.6), Color(hex: "4A1D3D")],
+            colors: [Color.pairtuneCoral.opacity(0.6), Color(hex: "4A1D3D")],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -119,7 +119,7 @@ struct ArtistDetailView: View {
         HStack {
             Text(text)
                 .font(.system(size: 11))
-                .foregroundColor(.besideTextTertiary)
+                .foregroundColor(.pairtuneTextTertiary)
                 .tracking(0.6)
                 .textCase(.uppercase)
             Spacer()
@@ -160,7 +160,7 @@ private struct ArtistTrackRow: View {
                     .lineLimit(1)
                 Text(track.album)
                     .font(.system(size: 12.5))
-                    .foregroundColor(.besideTextSecondary)
+                    .foregroundColor(.pairtuneTextSecondary)
                     .lineLimit(1)
             }
 
@@ -168,7 +168,7 @@ private struct ArtistTrackRow: View {
 
             Text(fmt(track.duration))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.besideTextTertiary)
+                .foregroundColor(.pairtuneTextTertiary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 18)
@@ -213,7 +213,7 @@ private struct AlbumCard: View {
                     .lineLimit(1)
                 Text(album.artistName)
                     .font(.system(size: 11))
-                    .foregroundColor(.besideTextSecondary)
+                    .foregroundColor(.pairtuneTextSecondary)
                     .lineLimit(1)
             }
             .frame(width: 140, alignment: .leading)

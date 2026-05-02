@@ -11,7 +11,7 @@ struct SearchSheet: View {
     var body: some View {
         NavigationStack(path: $navPath) {
             ZStack {
-                Color.besideSurface.ignoresSafeArea()
+                Color.pairtuneSurface.ignoresSafeArea()
                 searchRoot
             }
             .navigationBarHidden(true)
@@ -54,13 +54,13 @@ struct SearchSheet: View {
                 HStack(spacing: 0) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 15))
-                        .foregroundColor(.besideTextTertiary)
+                        .foregroundColor(.pairtuneTextTertiary)
                         .padding(.leading, 12)
 
                     TextField("曲名・アーティスト  ·  Songs, artists", text: $query)
                         .font(.system(size: 15))
                         .foregroundColor(.white)
-                        .tint(.besideCoral)
+                        .tint(.pairtuneCoral)
                         .focused($searchFocused)
                         .autocorrectionDisabled()
                         .padding(.vertical, 10)
@@ -82,7 +82,7 @@ struct SearchSheet: View {
                 } label: {
                     Text("キャンセル")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.besideCoral)
+                        .foregroundColor(.pairtuneCoral)
                 }
             }
             .padding(.horizontal, 18)
@@ -93,7 +93,7 @@ struct SearchSheet: View {
                 HStack {
                     Text("最近聴いた曲 · Recently played")
                         .font(.system(size: 11))
-                        .foregroundColor(.besideTextTertiary)
+                        .foregroundColor(.pairtuneTextTertiary)
                         .tracking(0.6)
                         .textCase(.uppercase)
                     Spacer()
@@ -113,10 +113,10 @@ struct SearchSheet: View {
                         VStack(spacing: 6) {
                             Text("該当する結果がありません")
                                 .font(.system(size: 14))
-                                .foregroundColor(.besideTextSecondary)
+                                .foregroundColor(.pairtuneTextSecondary)
                             Text("No results")
                                 .font(.system(size: 11))
-                                .foregroundColor(.besideTextTertiary)
+                                .foregroundColor(.pairtuneTextTertiary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 60)
@@ -139,7 +139,7 @@ struct SearchSheet: View {
 
                             if !viewModel.songs.isEmpty {
                                 Divider()
-                                    .background(Color.besideHairline)
+                                    .background(Color.pairtuneHairline)
                                     .padding(.horizontal, 18)
                                     .padding(.bottom, 14)
                             }
@@ -168,7 +168,7 @@ struct SearchSheet: View {
         HStack {
             Text(text)
                 .font(.system(size: 11))
-                .foregroundColor(.besideTextTertiary)
+                .foregroundColor(.pairtuneTextTertiary)
                 .tracking(0.6)
                 .textCase(.uppercase)
             Spacer()
@@ -209,7 +209,7 @@ private struct TrackRow: View {
                     .lineLimit(1)
                 Text("\(track.artist) · \(track.album)")
                     .font(.system(size: 12.5))
-                    .foregroundColor(.besideTextSecondary)
+                    .foregroundColor(.pairtuneTextSecondary)
                     .lineLimit(1)
             }
 
@@ -217,7 +217,7 @@ private struct TrackRow: View {
 
             Text(fmt(track.duration))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.besideTextTertiary)
+                .foregroundColor(.pairtuneTextTertiary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 18)
@@ -263,7 +263,7 @@ private struct ArtistAvatarCell: View {
 
     private var placeholder: some View {
         LinearGradient(
-            colors: [Color.besideCoral.opacity(0.55), Color(hex: "4A1D3D")],
+            colors: [Color.pairtuneCoral.opacity(0.55), Color(hex: "4A1D3D")],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

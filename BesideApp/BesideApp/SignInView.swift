@@ -6,11 +6,11 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            Color.besideBase.ignoresSafeArea()
+            Color.pairtuneBase.ignoresSafeArea()
 
             // Atmospheric glow
             RadialGradient(
-                colors: [Color.besideCoral.opacity(0.22), .clear],
+                colors: [Color.pairtuneCoral.opacity(0.22), .clear],
                 center: UnitPoint(x: 0.5, y: -0.1),
                 startRadius: 0,
                 endRadius: 380
@@ -23,23 +23,23 @@ struct SignInView: View {
 
                 // Logo + wordmark + tagline
                 VStack(spacing: 0) {
-                    BesideLogoView(size: 92, color: .besideCoral, glow: true)
+                    PairTuneLogoView(size: 92, color: .pairtuneCoral, glow: true)
                         .opacity(busy ? 0.6 : 1)
                         .animation(.easeInOut(duration: 0.3), value: busy)
 
-                    BesideWordmark(size: 42)
+                    PairTuneWordmark(size: 42)
                         .padding(.top, 20)
 
                     VStack(spacing: 6) {
                         Text("通話せずに、同じ曲を、あの人と。")
                             .font(.system(size: 14))
-                            .foregroundColor(.besideTextSecondary)
+                            .foregroundColor(.pairtuneTextSecondary)
                             .multilineTextAlignment(.center)
                             .tracking(0.4)
 
                         Text("The same song, beside someone — without a call.")
                             .font(.system(size: 11.5))
-                            .foregroundColor(.besideTextTertiary)
+                            .foregroundColor(.pairtuneTextTertiary)
                             .tracking(0.6)
                     }
                     .padding(.top, 14)
@@ -81,16 +81,16 @@ struct SignInView: View {
                     HStack(spacing: 4) {
                         Text("続行することで")
                         Text("利用規約")
-                            .foregroundColor(.besideTextSecondary)
+                            .foregroundColor(.pairtuneTextSecondary)
                             .underline()
                         Text("と")
                         Text("プライバシー")
-                            .foregroundColor(.besideTextSecondary)
+                            .foregroundColor(.pairtuneTextSecondary)
                             .underline()
                         Text("に同意")
                     }
                     .font(.system(size: 11))
-                    .foregroundColor(.besideTextTertiary)
+                    .foregroundColor(.pairtuneTextTertiary)
                     .tracking(0.4)
                 }
                 .padding(.horizontal, 24)

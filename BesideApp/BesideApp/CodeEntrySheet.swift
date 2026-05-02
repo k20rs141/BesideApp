@@ -16,7 +16,7 @@ struct CodeEntrySheet: View {
 
     var body: some View {
         ZStack {
-            Color.besideSurfaceSheet.ignoresSafeArea()
+            Color.pairtuneSurfaceSheet.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Handle bar
@@ -34,7 +34,7 @@ struct CodeEntrySheet: View {
 
                 Text("Enter the 6-letter code")
                     .font(.system(size: 12.5))
-                    .foregroundColor(.besideTextTertiary)
+                    .foregroundColor(.pairtuneTextTertiary)
                     .tracking(0.4)
                     .padding(.top, 6)
 
@@ -76,8 +76,8 @@ struct CodeEntrySheet: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                                         .stroke(
-                                            hasError ? Color.besideSyncBad :
-                                                filled ? Color.besideCoral :
+                                            hasError ? Color.pairtuneSyncBad :
+                                                filled ? Color.pairtuneCoral :
                                                 Color.white.opacity(0.12),
                                             lineWidth: 1.5
                                         )
@@ -100,15 +100,15 @@ struct CodeEntrySheet: View {
                 Group {
                     if isValidating {
                         HStack(spacing: 6) {
-                            SpinnerView(color: .besideTextTertiary, size: 12)
+                            SpinnerView(color: .pairtuneTextTertiary, size: 12)
                             Text("確認中…")
                         }
                     } else if let err = errorMessage {
                         Text(err)
-                            .foregroundColor(.besideSyncBad)
+                            .foregroundColor(.pairtuneSyncBad)
                     } else {
                         Text("大文字小文字は問いません · O / I は使われません")
-                            .foregroundColor(.besideTextTertiary)
+                            .foregroundColor(.pairtuneTextTertiary)
                     }
                 }
                 .font(.system(size: 12))
@@ -129,7 +129,7 @@ struct CodeEntrySheet: View {
                             .font(.system(size: 12.5))
                             .tracking(0.3)
                     }
-                    .foregroundColor(.besideTextSecondary)
+                    .foregroundColor(.pairtuneTextSecondary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(
@@ -144,7 +144,7 @@ struct CodeEntrySheet: View {
 
                 Text("1文字入力ごとに haptic feedback · Auto-advances on input")
                     .font(.system(size: 11))
-                    .foregroundColor(.besideTextQuaternary)
+                    .foregroundColor(.pairtuneTextQuaternary)
                     .tracking(0.4)
                     .multilineTextAlignment(.center)
                     .padding(.bottom, 16)

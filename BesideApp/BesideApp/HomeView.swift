@@ -9,13 +9,13 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            Color.besideBase.ignoresSafeArea()
+            Color.pairtuneBase.ignoresSafeArea()
 
             // Ambient glows
             GeometryReader { geo in
                 ZStack {
                     RadialGradient(
-                        colors: [Color.besideCoral.opacity(0.15), .clear],
+                        colors: [Color.pairtuneCoral.opacity(0.15), .clear],
                         center: UnitPoint(x: 1.3, y: 0.12),
                         startRadius: 0,
                         endRadius: 360
@@ -23,7 +23,7 @@ struct HomeView: View {
                     .blur(radius: 10)
 
                     RadialGradient(
-                        colors: [Color.besideCream.opacity(0.06), .clear],
+                        colors: [Color.pairtuneCream.opacity(0.06), .clear],
                         center: UnitPoint(x: -0.3, y: 0.86),
                         startRadius: 0,
                         endRadius: 300
@@ -37,12 +37,12 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 // Top bar
                 HStack {
-                    BesideWordmark(size: 20)
+                    PairTuneWordmark(size: 20)
                     Spacer()
                     Button(action: onProfile) {
                         Image(systemName: "gearshape")
                             .font(.system(size: 15, weight: .regular))
-                            .foregroundColor(.besideTextSecondary)
+                            .foregroundColor(.pairtuneTextSecondary)
                             .frame(width: 36, height: 36)
                             .background(
                                 Circle()
@@ -58,7 +58,7 @@ struct HomeView: View {
 
                 // Hero
                 VStack(spacing: 0) {
-                    BesideLogoView(size: 120, color: .besideCoral, glow: true)
+                    PairTuneLogoView(size: 120, color: .pairtuneCoral, glow: true)
 
                     Text("通話せずに、\n同じ曲を、あの人と。")
                         .font(.system(size: 22, weight: .medium))
@@ -70,7 +70,7 @@ struct HomeView: View {
 
                     Text("Listen together — without picking up the phone.")
                         .font(.system(size: 12.5))
-                        .foregroundColor(.besideTextTertiary)
+                        .foregroundColor(.pairtuneTextTertiary)
                         .tracking(0.6)
                         .padding(.top, 12)
                 }
@@ -107,8 +107,8 @@ struct HomeView: View {
                         .frame(height: 60)
                         .background(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(Color.besideCoral)
-                                .shadow(color: Color.besideCoral.opacity(0.40), radius: 20, y: 6)
+                                .fill(Color.pairtuneCoral)
+                                .shadow(color: Color.pairtuneCoral.opacity(0.40), radius: 20, y: 6)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                                         .stroke(Color.white.opacity(0.18), lineWidth: 0.5)

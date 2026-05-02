@@ -161,7 +161,7 @@ private struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.besideBase.ignoresSafeArea()
+                Color.pairtuneBase.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     VStack(spacing: 0) {
@@ -211,12 +211,12 @@ private struct SettingsSheet: View {
                         } label: {
                             HStack(spacing: 8) {
                                 if isDeleting {
-                                    SpinnerView(color: .besideSyncBad, size: 16)
+                                    SpinnerView(color: .pairtuneSyncBad, size: 16)
                                 }
                                 Text("アカウントを削除")
                                     .font(.system(size: 15, weight: .regular))
                             }
-                            .foregroundColor(.besideSyncBad)
+                            .foregroundColor(.pairtuneSyncBad)
                             .frame(maxWidth: .infinity)
                             .frame(height: 48)
                         }
@@ -279,7 +279,7 @@ private struct SettingsRow: View {
             HStack {
                 Image(systemName: systemImage)
                     .font(.system(size: 14))
-                    .foregroundColor(.besideTextSecondary)
+                    .foregroundColor(.pairtuneTextSecondary)
                     .frame(width: 22)
                 Text(label)
                     .font(.system(size: 15))
@@ -287,7 +287,7 @@ private struct SettingsRow: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.besideTextTertiary)
+                    .foregroundColor(.pairtuneTextTertiary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)

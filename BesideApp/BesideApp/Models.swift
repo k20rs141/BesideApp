@@ -33,11 +33,11 @@ enum SyncState: Equatable {
 
     var color: Color {
         switch self {
-        case .idle:                  return .besideTextTertiary
-        case .loading, .outOfSync:  return .besideSyncWarn
-        case .playing:              return .besideSyncOk
-        case .paused:               return .besideTextSecondary
-        case .disconnected:         return .besideSyncBad
+        case .idle:                  return .pairtuneTextTertiary
+        case .loading, .outOfSync:  return .pairtuneSyncWarn
+        case .playing:              return .pairtuneSyncOk
+        case .paused:               return .pairtuneTextSecondary
+        case .disconnected:         return .pairtuneSyncBad
         }
     }
 
@@ -103,7 +103,7 @@ let mockTrack = Track(
 let mockCode = "KTOMSO"
 
 let mockParticipants: [Participant] = [
-    Participant(id: "me",  name: "You", nameJa: "あなた", role: .host,  color: .besideCoral,          initials: "YO"),
+    Participant(id: "me",  name: "You", nameJa: "あなた", role: .host,  color: .pairtuneCoral,          initials: "YO"),
     Participant(id: "aoi", name: "Aoi", nameJa: "あおい", role: .guest, color: Color(hex: "7BD389"),  initials: "AO"),
     Participant(id: "ren", name: "Ren", nameJa: "れん",   role: .guest, color: Color(hex: "6BB6F0"),  initials: "RE"),
     Participant(id: "mio", name: "Mio", nameJa: "みお",   role: .guest, color: Color(hex: "F4C26A"),  initials: "MI"),

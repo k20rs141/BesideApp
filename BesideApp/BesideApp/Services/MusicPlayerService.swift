@@ -130,10 +130,10 @@ extension Song {
             album: albumTitle ?? "",
             duration: Int(duration ?? 0),
             gradientStops: [
-                .init(color: .besideCoral, location: 0.0),
+                .init(color: .pairtuneCoral, location: 0.0),
                 .init(color: Color(hex: "4A1D3D"), location: 1.0),
             ],
-            dominant: .besideCoral,
+            dominant: .pairtuneCoral,
             artworkURL: artwork?.url(width: 100, height: 100)
         )
     }

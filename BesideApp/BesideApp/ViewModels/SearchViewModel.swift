@@ -127,10 +127,10 @@ private struct AppleMusicSearchResponse: Decodable {
                 album: attrs.albumName ?? "",
                 duration: (attrs.durationInMillis ?? 0) / 1000,
                 gradientStops: [
-                    .init(color: .besideCoral, location: 0.0),
+                    .init(color: .pairtuneCoral, location: 0.0),
                     .init(color: Color(hex: "4A1D3D"), location: 1.0),
                 ],
-                dominant: .besideCoral,
+                dominant: .pairtuneCoral,
                 artworkURL: artworkURL
             )
         }

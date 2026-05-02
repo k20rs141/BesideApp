@@ -18,11 +18,11 @@ struct RoomView: View {
     private var currentTrack: Track? { roomViewModel.currentTrack }
     private var isPaused: Bool { roomViewModel.isPaused }
     private var progress: Int { roomViewModel.progress }
-    private var dominant: Color { currentTrack?.dominant ?? .besideCoral }
+    private var dominant: Color { currentTrack?.dominant ?? .pairtuneCoral }
 
     var body: some View {
         ZStack {
-            Color.besideBase.ignoresSafeArea()
+            Color.pairtuneBase.ignoresSafeArea()
 
             // Ambient color bleed from artwork
             VStack {
@@ -75,7 +75,7 @@ struct RoomView: View {
                         }
 
                         // Sync badge
-                        SyncBadgeView(state: syncState, accent: .besideCoral)
+                        SyncBadgeView(state: syncState, accent: .pairtuneCoral)
                             .padding(.top, 18)
 
                         Spacer()
@@ -166,7 +166,7 @@ struct RoomView: View {
                         .tracking(3.5)
                     Text("TAP TO COPY")
                         .font(.system(size: 9.5, weight: .regular))
-                        .foregroundColor(.besideTextTertiary)
+                        .foregroundColor(.pairtuneTextTertiary)
                         .tracking(0.6)
                 }
                 .padding(.horizontal, 16)
@@ -200,7 +200,7 @@ struct RoomView: View {
                     .foregroundColor(.white.opacity(0.5))
                 Text(isHost ? "Pick a song to begin" : "The host is choosing")
                     .font(.system(size: 12))
-                    .foregroundColor(.besideTextTertiary)
+                    .foregroundColor(.pairtuneTextTertiary)
                     .padding(.top, 5)
             } else {
                 Text(currentTrack?.title ?? mockTrack.title)
@@ -210,7 +210,7 @@ struct RoomView: View {
                     .tracking(0.1)
                 Text(currentTrack?.artist ?? mockTrack.artist)
                     .font(.system(size: 14))
-                    .foregroundColor(.besideTextSecondary)
+                    .foregroundColor(.pairtuneTextSecondary)
                     .padding(.top, 4)
                     .tracking(0.2)
             }
@@ -229,15 +229,15 @@ struct RoomView: View {
                     .frame(height: 3)
 
                 Capsule()
-                    .fill(Color.besideCoral)
+                    .fill(Color.pairtuneCoral)
                     .frame(width: max(0, width * ratio), height: 3)
-                    .shadow(color: Color.besideCoral.opacity(0.5), radius: 4)
+                    .shadow(color: Color.pairtuneCoral.opacity(0.5), radius: 4)
                     .animation(.linear(duration: 1), value: progress)
 
                 Circle()
-                    .fill(Color.besideCoral)
+                    .fill(Color.pairtuneCoral)
                     .frame(width: 9, height: 9)
-                    .shadow(color: Color.besideCoral.opacity(0.8), radius: 6)
+                    .shadow(color: Color.pairtuneCoral.opacity(0.8), radius: 6)
                     .offset(x: max(0, width * ratio - 4.5))
                     .animation(.linear(duration: 1), value: progress)
             }
@@ -248,7 +248,7 @@ struct RoomView: View {
                 Text("−\(fmt(max(0, duration - progress)))")
             }
             .font(.system(size: 11, design: .monospaced))
-            .foregroundColor(.besideTextTertiary)
+            .foregroundColor(.pairtuneTextTertiary)
             .padding(.top, 8)
         }
     }
@@ -261,7 +261,7 @@ struct RoomView: View {
                     AvatarView(participant: p, size: 40, showCrown: true)
                     Text(p.nameJa)
                         .font(.system(size: 10.5))
-                        .foregroundColor(p.id == "me" ? .white : .besideTextSecondary)
+                        .foregroundColor(p.id == "me" ? .white : .pairtuneTextSecondary)
                         .tracking(0.2)
                 }
             }
@@ -283,8 +283,8 @@ struct RoomView: View {
                     .padding(.vertical, 14)
                     .background(
                         Capsule()
-                            .fill(Color.besideCoral)
-                            .shadow(color: Color.besideCoral.opacity(0.5), radius: 14, y: 4)
+                            .fill(Color.pairtuneCoral)
+                            .shadow(color: Color.pairtuneCoral.opacity(0.5), radius: 14, y: 4)
                     )
                 }
             } else if syncState != .disconnected {
@@ -310,8 +310,8 @@ struct RoomView: View {
                             .frame(width: 68, height: 68)
                             .background(
                                 Circle()
-                                    .fill(Color.besideCoral)
-                                    .shadow(color: Color.besideCoral.opacity(0.55), radius: 18, y: 4)
+                                    .fill(Color.pairtuneCoral)
+                                    .shadow(color: Color.pairtuneCoral.opacity(0.55), radius: 18, y: 4)
                                     .overlay(
                                         Circle().stroke(Color.white.opacity(0.22), lineWidth: 0.5)
                                     )
@@ -322,7 +322,7 @@ struct RoomView: View {
                     Button { } label: {
                         Image(systemName: "music.note")
                             .font(.system(size: 19, weight: .regular))
-                            .foregroundColor(.besideTextSecondary)
+                            .foregroundColor(.pairtuneTextSecondary)
                             .frame(width: 52, height: 52)
                             .background(
                                 Circle()
@@ -338,14 +338,14 @@ struct RoomView: View {
     private var guestLabel: some View {
         Text("ホストが操作中 · Host is in control")
             .font(.system(size: 11))
-            .foregroundColor(.besideTextQuaternary)
+            .foregroundColor(.pairtuneTextQuaternary)
             .tracking(0.5)
             .padding(.top, 14)
     }
 
     private var disconnectBanner: some View {
         HStack(spacing: 10) {
-            SpinnerView(color: .besideSyncBad, size: 14)
+            SpinnerView(color: .pairtuneSyncBad, size: 14)
             VStack(alignment: .leading, spacing: 2) {
                 Text("接続が切れました")
                     .font(.system(size: 13, weight: .medium))
@@ -360,10 +360,10 @@ struct RoomView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.besideSyncBad.opacity(0.16))
+                .fill(Color.pairtuneSyncBad.opacity(0.16))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.besideSyncBad.opacity(0.40), lineWidth: 0.5)
+                        .stroke(Color.pairtuneSyncBad.opacity(0.40), lineWidth: 0.5)
                 )
         )
     }
@@ -374,7 +374,7 @@ struct RoomView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("🛠 Debug")
                 .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundColor(.besideCoral)
+                .foregroundColor(.pairtuneCoral)
             Group {
                 Text("role: \(isHost ? "host" : "guest")")
                 Text("syncState: \(syncState.labelEn)")
