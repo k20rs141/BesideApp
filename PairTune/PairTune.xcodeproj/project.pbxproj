@@ -11,27 +11,27 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		9F3EAC002F9E999900E51C2B /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Config.xcconfig; path = BesideApp/Config.xcconfig; sourceTree = SOURCE_ROOT; };
-		9FE67E102F9E2ED7004E33C5 /* BesideApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BesideApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9F3EAC002F9E999900E51C2B /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Config.xcconfig; path = PairTune/Config.xcconfig; sourceTree = SOURCE_ROOT; };
+		9FE67E102F9E2ED7004E33C5 /* PairTune.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PairTune.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		9F3EABF32F9E426000E51C2B /* Exceptions for "BesideApp" folder in "BesideApp" target */ = {
+		9F3EABF32F9E426000E51C2B /* Exceptions for "PairTune" folder in "PairTune" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 9FE67E0F2F9E2ED7004E33C5 /* BesideApp */;
+			target = 9FE67E0F2F9E2ED7004E33C5 /* PairTune */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9FE67E122F9E2ED7004E33C5 /* BesideApp */ = {
+		9FE67E122F9E2ED7004E33C5 /* PairTune */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				9F3EABF32F9E426000E51C2B /* Exceptions for "BesideApp" folder in "BesideApp" target */,
+				9F3EABF32F9E426000E51C2B /* Exceptions for "PairTune" folder in "PairTune" target */,
 			);
-			path = BesideApp;
+			path = PairTune;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -59,7 +59,7 @@
 		9FE67E072F9E2ED7004E33C5 = {
 			isa = PBXGroup;
 			children = (
-				9FE67E122F9E2ED7004E33C5 /* BesideApp */,
+				9FE67E122F9E2ED7004E33C5 /* PairTune */,
 				9FE67E112F9E2ED7004E33C5 /* Products */,
 				9F3EAC942F9E464D00E51C2B /* Recovered References */,
 			);
@@ -68,7 +68,7 @@
 		9FE67E112F9E2ED7004E33C5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9FE67E102F9E2ED7004E33C5 /* BesideApp.app */,
+				9FE67E102F9E2ED7004E33C5 /* PairTune.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,9 +76,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		9FE67E0F2F9E2ED7004E33C5 /* BesideApp */ = {
+		9FE67E0F2F9E2ED7004E33C5 /* PairTune */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9FE67E1B2F9E2EDA004E33C5 /* Build configuration list for PBXNativeTarget "BesideApp" */;
+			buildConfigurationList = 9FE67E1B2F9E2EDA004E33C5 /* Build configuration list for PBXNativeTarget "PairTune" */;
 			buildPhases = (
 				9FE67E0C2F9E2ED7004E33C5 /* Sources */,
 				9FE67E0D2F9E2ED7004E33C5 /* Frameworks */,
@@ -89,14 +89,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				9FE67E122F9E2ED7004E33C5 /* BesideApp */,
+				9FE67E122F9E2ED7004E33C5 /* PairTune */,
 			);
-			name = BesideApp;
+			name = PairTune;
 			packageProductDependencies = (
 				9F3EABF52F9E438700E51C2B /* Supabase */,
 			);
-			productName = BesideApp;
-			productReference = 9FE67E102F9E2ED7004E33C5 /* BesideApp.app */;
+			productName = PairTune;
+			productReference = 9FE67E102F9E2ED7004E33C5 /* PairTune.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -114,7 +114,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 9FE67E0B2F9E2ED7004E33C5 /* Build configuration list for PBXProject "BesideApp" */;
+			buildConfigurationList = 9FE67E0B2F9E2ED7004E33C5 /* Build configuration list for PBXProject "PairTune" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -131,7 +131,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				9FE67E0F2F9E2ED7004E33C5 /* BesideApp */,
+				9FE67E0F2F9E2ED7004E33C5 /* PairTune */,
 			);
 		};
 /* End PBXProject section */
@@ -284,14 +284,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = BesideApp/BesideApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = PairTune/PairTune.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3BQ9ZGULC5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = BesideApp/Info.plist;
+				INFOPLIST_FILE = PairTune/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PairTune;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "同期再生のために Apple Music へのアクセスを使用します。";
@@ -325,14 +325,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = BesideApp/BesideApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = PairTune/PairTune.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3BQ9ZGULC5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = BesideApp/Info.plist;
+				INFOPLIST_FILE = PairTune/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PairTune;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "同期再生のために Apple Music へのアクセスを使用します。";
@@ -363,7 +363,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9FE67E0B2F9E2ED7004E33C5 /* Build configuration list for PBXProject "BesideApp" */ = {
+		9FE67E0B2F9E2ED7004E33C5 /* Build configuration list for PBXProject "PairTune" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9FE67E192F9E2EDA004E33C5 /* Debug */,
@@ -372,7 +372,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9FE67E1B2F9E2EDA004E33C5 /* Build configuration list for PBXNativeTarget "BesideApp" */ = {
+		9FE67E1B2F9E2EDA004E33C5 /* Build configuration list for PBXNativeTarget "PairTune" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9FE67E1C2F9E2EDA004E33C5 /* Debug */,
