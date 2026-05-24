@@ -213,8 +213,9 @@ private struct AnniversaryBanner: View {
                 .foregroundColor(.white)
                 .tracking(0.2)
             Spacer()
+            // jsx: chevron 13pt rgba(255,255,255,0.4)
             Image(systemName: "chevron.right")
-                .font(.system(size: 11))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color.white.opacity(0.4))
         }
         .padding(.horizontal, 12)
@@ -246,21 +247,14 @@ private struct MemoryEntryCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(LinearGradient(
-                            colors: [Color.pairtunePrimary, Color.pairtuneSecondary],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ))
-                        .frame(width: 54, height: 54)
-                        .shadow(color: Color.pairtunePrimary.opacity(0.33), radius: 12, y: 6)
-                    Text("✨").font(.system(size: 20))
-                }
+                memoryIcon
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("ふたりの思い出アルバム")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
+                        .tracking(0.2)
+                    // jsx: stats 11pt rgba(255,255,255,0.65)、数字部分のみ #fff weight 500
                     HStack(spacing: 4) {
                         statValue("\(days) 日")
                         Text("· 一緒に").foregroundColor(Color.white.opacity(0.65))
@@ -273,11 +267,12 @@ private struct MemoryEntryCard: View {
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 15))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.6))
             }
             .padding(16)
             .background(
+                // jsx: bg primary22→secondary18 / border primary36 / shadow primary1a
                 RoundedRectangle(cornerRadius: 18)
                     .fill(
                         LinearGradient(
@@ -291,10 +286,40 @@ private struct MemoryEntryCard: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 18).stroke(Color.pairtunePrimary.opacity(0.21), lineWidth: 0.5)
                     )
-                    .shadow(color: Color.pairtunePrimary.opacity(0.10), radius: 12, y: 6)
+                    .shadow(color: Color.pairtunePrimary.opacity(0.10), radius: 14, y: 12)
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // jsx の "stack of memory" 効果: 54×54 グラデコンテナの中に
+    // 微妙に回転した白半透明矩形 2 枚 + ✨ を重ねる
+    private var memoryIcon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(LinearGradient(
+                    colors: [Color.pairtunePrimary, Color.pairtuneSecondary],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .frame(width: 54, height: 54)
+                .shadow(color: Color.pairtunePrimary.opacity(0.33), radius: 11, y: 8)
+
+            // 後ろの "本" 1 枚目(inset 6 vertical / 4 horizontal, -6° 傾き、white 0.12)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.12))
+                .frame(width: 54 - 8, height: 54 - 12)
+                .rotationEffect(.degrees(-6))
+
+            // 前の "本" 2 枚目(inset 4 vertical / 8 horizontal, +3° 傾き、white 0.18)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 54 - 16, height: 54 - 8)
+                .rotationEffect(.degrees(3))
+
+            Text("✨").font(.system(size: 20))
+        }
+        .frame(width: 54, height: 54)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func statValue(_ text: String) -> some View {
@@ -527,6 +552,8 @@ private struct TimelineMonthMark: View {
 
 private struct PlaylistAlbumHero: View {
     let tracks: [PairPlaylistTrack]
+    /// プレイリスト総再生時間(任意。未指定なら "—")
+    var totalDurationLabel: String = "—"
     var onOpen: () -> Void
 
     var body: some View {
@@ -539,22 +566,26 @@ private struct PlaylistAlbumHero: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .tracking(0.2)
-                    Text("\(tracks.count) 曲 · ふたりだけ")
+                    // jsx: "N 曲 · X 分 · ふたりだけ" の 3 セグメント
+                    Text("\(tracks.count) 曲 · \(totalDurationLabel) · ふたりだけ")
                         .font(.system(size: 11))
-                        .foregroundColor(Color.pairtuneTextSecondary)
+                        .foregroundColor(Color(hex: "A8A8A8"))
                         .tracking(0.2)
+                    // jsx: margin-top 10, 11.5pt weight 500 primary, chevron 12pt
                     HStack(spacing: 4) {
                         Text("開く")
                             .font(.system(size: 11.5, weight: .medium))
-                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundColor(.pairtunePrimary)
-                    .padding(.top, 6)
+                    .padding(.top, 10)
                 }
                 Spacer(minLength: 0)
             }
             .padding(14)
             .background(
+                // jsx: 135deg primary33→secondary24 / border primary3a / shadow primary1a
                 RoundedRectangle(cornerRadius: 18)
                     .fill(LinearGradient(
                         colors: [Color.pairtunePrimary.opacity(0.2), Color.pairtuneSecondary.opacity(0.14)],
@@ -563,7 +594,7 @@ private struct PlaylistAlbumHero: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 18).stroke(Color.pairtunePrimary.opacity(0.23), lineWidth: 0.5)
                     )
-                    .shadow(color: Color.pairtunePrimary.opacity(0.10), radius: 12, y: 6)
+                    .shadow(color: Color.pairtunePrimary.opacity(0.10), radius: 14, y: 10)
             )
         }
         .buttonStyle(.plain)
@@ -572,7 +603,7 @@ private struct PlaylistAlbumHero: View {
     private var mosaicCover: some View {
         let display = Array(tracks.prefix(4))
         return ZStack(alignment: .bottomTrailing) {
-            // 2x2 grid using padding-based layout
+            // jsx: grid 2x2、96×96、rounded 12、shadow 0 10 24 black04
             VStack(spacing: 0) {
                 HStack(spacing: 0) {
                     mosaicTile(display.first)
@@ -585,15 +616,17 @@ private struct PlaylistAlbumHero: View {
             }
             .frame(width: 96, height: 96)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.4), radius: 12, y: 8)
+            .shadow(color: .black.opacity(0.4), radius: 12, y: 10)
 
-            // small ♡ badge
+            // jsx: heart 24×24 at bottom-right offset 5,5、rgba(0,0,0,0.55) + blur
             Image(systemName: "heart.fill")
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundColor(.white)
                 .frame(width: 24, height: 24)
                 .background(
-                    Circle().fill(Color.black.opacity(0.55))
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .overlay(Circle().fill(Color.black.opacity(0.4)))
                 )
                 .padding(5)
         }
