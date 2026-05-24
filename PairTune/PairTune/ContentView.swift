@@ -66,6 +66,10 @@ struct ContentView: View {
         .onChange(of: authViewModel.session?.user.id) { _, newUserId in
             if let uid = newUserId {
                 Task { await pairViewModel.start(myUserId: uid.uuidString) }
+                // observeAuthState の signedIn パスは loadProfile を呼ばないため、
+                // セッションが立ったらここで保険として再ロードする。
+                // 既にロード済みなら fetchMyProfile が同じ値を返すだけで冪等。
+                Task { await authViewModel.loadProfile() }
             } else {
                 Task { await pairViewModel.stop() }
                 roomViewModel = nil
@@ -175,14 +179,21 @@ struct ContentView: View {
                         // v0.5: Solo は Room 起点。Home → Solo ボタン → Solo Room に直行する
                         // (旧 SoloModeView の push 経路は廃止)
                         gateThenRun(intent: .solo) {
+                            // 履歴ロードは Room 表示と並行で進めたいが、`async let _` で
+                            // 結果を捨てると囲い Task の出口で暗黙キャンセルが走り、
+                            // soloHistoryVM 側で CancellationError が出る。
+                            // 独立 Task に切り出して投げっぱなしにする(ライフタイムを呼び出し側 Task から切る)。
+                            let userId = authViewModel.session?.user.id.uuidString ?? ""
+                            let partnerId = pairViewModel.activePair?.partnerUserId(meId: userId.lowercased())
+                            let pairId = pairViewModel.activePair?.id
                             Task {
-                                let userId = authViewModel.session?.user.id.uuidString ?? ""
-                                let partnerId = pairViewModel.activePair?.partnerUserId(meId: userId.lowercased())
-                                async let _ = soloHistoryVM.load(
-                                    pairId: pairViewModel.activePair?.id,
+                                await soloHistoryVM.load(
+                                    pairId: pairId,
                                     userId: userId,
                                     partnerUserId: partnerId
                                 )
+                            }
+                            Task {
                                 await homeViewModel.loadMyRoom()
                                 guard let myRoom = homeViewModel.myRoom else { return }
                                 roomViewModel = RoomViewModel(myRoom: myRoom)

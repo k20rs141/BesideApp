@@ -100,7 +100,8 @@ struct HomeView: View {
 
     /// pairingCode をクリップボードへコピーし、haptic + トーストで確認表示する。
     private func copyPairingCode() {
-        guard let code = pairingCode, !code.isEmpty else { return }
+        let code = (pairingCode ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else { return }
         UIPasteboard.general.string = code
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         withAnimation { toastMessage = "コードをコピーしました" }
@@ -253,6 +254,16 @@ struct HomeView: View {
 
     // MARK: - Code chip (v0.5 で「コードを送って、相手に参加してもらう」hint を追加)
 
+    /// 表示すべき code 文字列。プロフィール未ロードや空文字なら「------」プレースホルダを返す。
+    private var displayCode: String {
+        let trimmed = (pairingCode ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "------" : trimmed
+    }
+
+    private var hasValidCode: Bool {
+        !(pairingCode ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private var codeChip: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
@@ -261,7 +272,7 @@ struct HomeView: View {
                     .foregroundColor(Color.pairtuneTextSecondary)
                     .tracking(0.6)
                     .textCase(.uppercase)
-                Text(pairingCode ?? "------")
+                Text(displayCode)
                     .font(.system(size: 28, weight: .medium, design: .monospaced))
                     .foregroundColor(.pairtunePrimary)
                     .tracking(6)
@@ -288,8 +299,8 @@ struct HomeView: View {
                             .shadow(color: Color.pairtunePrimary.opacity(0.33), radius: 12, y: 6)
                     )
             }
-            .disabled(pairingCode == nil)
-            .opacity(pairingCode == nil ? 0.5 : 1.0)
+            .disabled(!hasValidCode)
+            .opacity(hasValidCode ? 1.0 : 0.5)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
