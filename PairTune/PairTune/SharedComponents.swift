@@ -505,11 +505,7 @@ private struct VinylDiscBody: View {
                 .blur(radius: 4)
                 .mask(Circle())
 
-            // spindle hole
-            Circle()
-                .fill(Color(hex: "050505"))
-                .frame(width: labelDiam * 0.14, height: labelDiam * 0.14)
-                .overlay(Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.5))
+            // v0.5: 中央のスピンドル穴は撤去(ユーザー要望、アートワーク表示を遮らない)
         }
         .frame(width: labelDiam, height: labelDiam)
         .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
