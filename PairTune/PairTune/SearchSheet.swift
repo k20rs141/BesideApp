@@ -155,7 +155,7 @@ struct SearchSheet: View {
                         .foregroundColor(.pairtuneTextTertiary)
                         .padding(.leading, 12)
 
-                    TextField("曲名・アーティスト  ·  Songs, artists", text: $query)
+                    TextField("曲名・アーティスト", text: $query)
                         .font(.system(size: 15))
                         .foregroundColor(.white)
                         .tint(.pairtuneCoral)
@@ -559,7 +559,7 @@ private struct SearchEmptyState: View {
             }
 
             if !isSolo && !viewModel.sharedRecentTracks.isEmpty {
-                sectionHeader("ふたりで最近聴いた曲", "Recently together", icon: "music.note")
+                sectionHeader("ふたりで最近聴いた曲", "", icon: "music.note")
                 ForEach(viewModel.sharedRecentTracks) { entry in
                     HistoryRow(entry: entry, onTap: { onTrack(entry.toTrack()) })
                 }
@@ -568,7 +568,7 @@ private struct SearchEmptyState: View {
             if !viewModel.myRecentTracks.isEmpty {
                 sectionHeader(
                     isSolo ? "最近聴いた曲" : "あなたが最近聴いた曲",
-                    "Your recent plays",
+                    "",
                     icon: "clock"
                 )
                 ForEach(viewModel.myRecentTracks) { entry in
@@ -629,10 +629,6 @@ private struct SearchEmptyState: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
                         .tracking(0.3)
-                    Text("· RECENT")
-                        .font(.system(size: 10.5))
-                        .foregroundColor(Color(hex: "5A5566"))
-                        .tracking(0.6)
                 }
                 Spacer()
                 Button { viewModel.clearRecentSearches() } label: {

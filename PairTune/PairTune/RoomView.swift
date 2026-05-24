@@ -246,10 +246,10 @@ struct RoomView: View {
                             .font(.system(size: 17, weight: .medium, design: .monospaced))
                             .foregroundColor(.white)
                             .tracking(3.5)
-                        Text("TAP TO COPY")
-                            .font(.system(size: 9.5, weight: .regular))
+                        Text("タップでコピー")
+                            .font(.system(size: 10, weight: .regular))
                             .foregroundColor(.pairtuneTextTertiary)
-                            .tracking(0.6)
+                            .tracking(0.3)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 5)
@@ -576,7 +576,7 @@ struct RoomView: View {
                 Text("接続が切れました")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white)
-                Text("Reconnecting… (try 2 of 3)")
+                Text("再接続しています…")
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.6))
             }
