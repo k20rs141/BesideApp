@@ -170,7 +170,7 @@ struct QueueSheet: View {
 
     @ViewBuilder
     private var nowPlayingSection: some View {
-        sectionHeader("再生中", "Now playing")
+        sectionHeader("再生中", "")
         if let track = roomViewModel.currentTrack {
             HStack(spacing: 12) {
                 ZStack {
@@ -397,7 +397,7 @@ struct QueueSheet: View {
 
     @ViewBuilder
     private var recentlyPlayedSection: some View {
-        sectionHeader("このセッションで聴いた曲", "Recently played")
+        sectionHeader("このセッションで聴いた曲", "")
         if recentlyPlayed.isEmpty {
             Text("まだ何も再生していません")
                 .font(.system(size: 11))

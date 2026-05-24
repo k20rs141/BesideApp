@@ -92,7 +92,7 @@ struct PairWaitingView: View {
                     .multilineTextAlignment(.center)
                     .lineSpacing(6)
                     .tracking(0.2)
-                Text("Waiting for partner to approve")
+                Text("相手の承認を待っています")
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "7A7588"))
                     .tracking(0.3)

@@ -239,7 +239,7 @@ struct RoomView: View {
             if roomViewModel.mode == .solo {
                 Button {
                     UIPasteboard.general.string = roomViewModel.currentRoom.code
-                    showToast("コードをコピーしました · Code copied")
+                    showToast("コードをコピーしました")
                 } label: {
                     VStack(spacing: 2) {
                         Text(roomViewModel.currentRoom.code)
@@ -268,7 +268,7 @@ struct RoomView: View {
 
             // ヘッダ右上は share ボタンのみ(キューは playback controls に置く設計 §2.15)。
             FrostedCircleButton(icon: "square.and.arrow.up", size: 38) {
-                showToast("招待リンクをシェア · Share invite")
+                showToast("招待リンクをシェアしました")
             }
         }
         .padding(.horizontal, 16)
@@ -372,7 +372,7 @@ struct RoomView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 16, weight: .medium))
-                        Text("曲を選ぶ · Pick a song")
+                        Text("曲を選ぶ")
                             .font(.system(size: 15, weight: .semibold))
                     }
                     .foregroundColor(.white)
@@ -486,7 +486,7 @@ struct RoomView: View {
     }
 
     private var guestLabel: some View {
-        Text("ホストが操作中 · Host is in control")
+        Text("ホストが操作中")
             .font(.system(size: 11))
             .foregroundColor(.pairtuneTextQuaternary)
             .tracking(0.5)

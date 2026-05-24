@@ -260,7 +260,7 @@ struct SearchSheet: View {
                         )
                     } else {
                         if !viewModel.artists.isEmpty {
-                            sectionHeader("アーティスト · Artists")
+                            sectionHeader("アーティスト")
                                 .padding(.bottom, 12)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(alignment: .top, spacing: 16) {
@@ -284,7 +284,7 @@ struct SearchSheet: View {
                         }
 
                         if !viewModel.songs.isEmpty {
-                            sectionHeader("曲 · Songs")
+                            sectionHeader("曲")
                                 .padding(.bottom, 4)
                             ForEach(viewModel.songs) { track in
                                 Button {
@@ -315,7 +315,7 @@ struct SearchSheet: View {
                                     .padding(.horizontal, 18)
                                     .padding(.bottom, 14)
                             }
-                            sectionHeader("プレイリスト · Playlists")
+                            sectionHeader("プレイリスト")
                                 .padding(.bottom, 12)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(alignment: .top, spacing: 16) {
@@ -577,7 +577,7 @@ private struct SearchEmptyState: View {
             }
 
             if !viewModel.suggestedArtists.isEmpty {
-                sectionHeader("おすすめのアーティスト", "For you · Artists")
+                sectionHeader("おすすめのアーティスト", "")
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 14) {
                         ForEach(viewModel.suggestedArtists) { artist in

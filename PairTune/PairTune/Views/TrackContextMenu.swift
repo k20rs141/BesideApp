@@ -172,7 +172,7 @@ struct TrackContextMenu: View {
     private func actionRow(
         icon: String,
         label: String,
-        sub: String,
+        sub: String = "",   // v0.5: 英語サブコピー廃止。互換のため受け取るだけで描画しない
         accent: Color?,
         danger: Bool = false,
         action: @escaping () -> Void
@@ -186,25 +186,19 @@ struct TrackContextMenu: View {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(iconBorder(accent: accent, danger: danger), lineWidth: 0.5)
                         )
-                        .frame(width: 28, height: 28)
+                        .frame(width: 30, height: 30)
                     Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(iconTint(accent: accent, danger: danger))
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(label)
-                        .font(.system(size: 13.5, weight: .medium))
-                        .foregroundColor(danger ? Color(hex: "E85B6B") : .white)
-                        .tracking(0.2)
-                    Text(sub)
-                        .font(.system(size: 10.5))
-                        .foregroundColor(Color(hex: "5A5566"))
-                        .tracking(0.2)
-                }
+                Text(label)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(danger ? Color(hex: "E85B6B") : .white)
+                    .tracking(0.2)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.vertical, 13)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
