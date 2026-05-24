@@ -187,6 +187,7 @@ extension PairPlaylistItem {
             id: id,
             title: songTitle,
             artist: artistName,
+            artworkUrl: artworkUrl.flatMap(URL.init(string:)),
             gradientStart: ContextSessionGrouping.gradientStart(for: songId),
             gradientEnd: ContextSessionGrouping.gradientEnd(for: songId),
             addedByLabel: label

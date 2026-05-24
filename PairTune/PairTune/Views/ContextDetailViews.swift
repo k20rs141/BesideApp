@@ -346,12 +346,13 @@ private struct TrackRowSmall: View {
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(Color(hex: "5A5566"))
                 .frame(width: 24, alignment: .center)
-            RoundedRectangle(cornerRadius: 6)
-                .fill(LinearGradient(
-                    colors: [track.gradientStart, track.gradientEnd],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ))
-                .frame(width: 38, height: 38)
+            TrackArtworkTile(
+                url: track.artworkUrl,
+                gradientStart: track.gradientStart,
+                gradientEnd: track.gradientEnd,
+                size: 38,
+                cornerRadius: 6
+            )
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
                     .font(.system(size: 13.5, weight: .medium))
@@ -383,12 +384,13 @@ private struct PlaylistRow: View {
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(Color(hex: "5A5566"))
                     .frame(width: 24, alignment: .center)
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(LinearGradient(
-                        colors: [track.gradientStart, track.gradientEnd],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-                    .frame(width: 42, height: 42)
+                TrackArtworkTile(
+                    url: track.artworkUrl,
+                    gradientStart: track.gradientStart,
+                    gradientEnd: track.gradientEnd,
+                    size: 42,
+                    cornerRadius: 6
+                )
                 VStack(alignment: .leading, spacing: 2) {
                     Text(track.title)
                         .font(.system(size: 14, weight: .medium))

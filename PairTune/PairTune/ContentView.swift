@@ -309,6 +309,15 @@ private struct PairSendAlert: Identifiable {
     let message: String
 }
 
+// MARK: - Context navigation routes
+//
+// fullScreenCover 内に置く NavigationStack の push 経路。
+// allSessions: 「すべての軌跡を見る」/ playlistDetail: 「すべて見る」(プレイリスト)
+enum ContextRoute: Hashable {
+    case allSessions
+    case playlistDetail
+}
+
 // MARK: - Connect Music gate (v0.5.1 §5.8)
 
 /// Room に入る直前に提示する音楽サービス接続ゲート。
@@ -358,6 +367,8 @@ private struct RoomViewWrapper: View {
     @Environment(\.scenePhase) private var scenePhase
     /// v0.5: Room から push される文脈画面の表示状態
     @State private var showContext: Bool = false
+    /// 文脈画面内の push 経路(AllSessions / PairPlaylistDetail)
+    @State private var contextPath: [ContextRoute] = []
 
     /// v1.1: ふたりのプレイリスト(★ ボタン INSERT 用にここで保持)
     @State private var pairPlaylistService = PairPlaylistService()
@@ -420,6 +431,120 @@ private struct RoomViewWrapper: View {
         }
     }
 
+    // MARK: - Context view root (Shared / Solo)
+
+    @ViewBuilder
+    private var contextRoot: some View {
+        if roomViewModel.mode == .shared {
+            SharedContextView(
+                sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
+                pairPlaylist: pairPlaylistItems.map { $0.toViewTrack(
+                    myUserId: authViewModel.session?.user.id.uuidString ?? "",
+                    partnerName: pairViewModel.partnerProfile?.displayName
+                ) },
+                totalDays: daysSincePair(),
+                totalSongs: soloHistoryVM.sharedHistory.count,
+                totalDurationLabel: totalDurationLabel(soloHistoryVM.sharedHistory),
+                showMemoryEntry: soloHistoryVM.sharedHistory.count >= 20 || daysSincePair() >= 7,
+                anniversary: false,
+                onBack: { showContext = false },
+                onOpenMemory: {},
+                onSeeAllSessions: { contextPath.append(.allSessions) },
+                onOpenPlaylist: { contextPath.append(.playlistDetail) },
+                onSelectTrack: { sessionTrack in
+                    playSessionTrack(sessionTrack)
+                }
+            )
+        } else {
+            SoloContextView(
+                state: soloContextState,
+                sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
+                myRecent: soloHistoryVM.myRecent.map { $0.toContextTrackCard() },
+                partnerFavs: soloHistoryVM.partnerFavorites.map { $0.toContextTrackCard() },
+                partnerName: pairViewModel.partnerProfile?.displayName ?? "さくら",
+                onBack: { showContext = false },
+                onSelectTrack: { card in
+                    playSoloCard(card)
+                },
+                onSelectSessionTrack: { sessionTrack in
+                    playSessionTrack(sessionTrack)
+                },
+                onSeeAllSessions: { contextPath.append(.allSessions) }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func contextDetail(for route: ContextRoute) -> some View {
+        switch route {
+        case .allSessions:
+            AllSessionsView(
+                sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
+                totalDays: daysSincePair(),
+                totalSongs: soloHistoryVM.sharedHistory.count,
+                totalDurationLabel: totalDurationLabel(soloHistoryVM.sharedHistory),
+                onBack: { if !contextPath.isEmpty { contextPath.removeLast() } },
+                onSelectSession: { _ in /* SessionDetail push 用、未配線 */ }
+            )
+        case .playlistDetail:
+            PairPlaylistDetailView(
+                tracks: pairPlaylistItems.map { $0.toViewTrack(
+                    myUserId: authViewModel.session?.user.id.uuidString ?? "",
+                    partnerName: pairViewModel.partnerProfile?.displayName
+                ) },
+                onBack: { if !contextPath.isEmpty { contextPath.removeLast() } },
+                onSelectTrack: { track in playPlaylistTrack(track) },
+                onPlayAll: {},
+                onShuffle: {},
+                onRemove: { track in
+                    Task {
+                        _ = await pairPlaylistService.removeItem(itemId: track.id)
+                        if let pid = pairPlaylist?.id {
+                            pairPlaylistItems = await pairPlaylistService.fetchItems(playlistId: pid)
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    // MARK: - Play helpers (Context 画面の曲タップ → 現 Room で再生)
+
+    /// myRecent / partnerFavorites の曲をタップしたとき、現 RoomViewModel で再生して context を閉じる
+    private func playSoloCard(_ card: SoloContextTrackCard) {
+        let pool = soloHistoryVM.myRecent + soloHistoryVM.partnerFavorites
+        guard let entry = pool.first(where: { $0.id == card.id }) else { return }
+        Task { await roomViewModel.playAsHost(entry.toTrack()) }
+        showContext = false
+    }
+
+    /// セッション内の曲(track tile)をタップ → 同じく現 Room で再生
+    private func playSessionTrack(_ t: ContextSessionTrack) {
+        guard let entry = soloHistoryVM.sharedHistory.first(where: { $0.id == t.id }) else { return }
+        Task { await roomViewModel.playAsHost(entry.toTrack()) }
+        showContext = false
+    }
+
+    /// ふたりのプレイリストの曲タップ → pair_playlist_items の song_id ベースで Track を組み立てて再生
+    private func playPlaylistTrack(_ t: PairPlaylistTrack) {
+        guard let item = pairPlaylistItems.first(where: { $0.id == t.id }) else { return }
+        let track = Track(
+            id: item.songId,
+            title: item.songTitle,
+            artist: item.artistName,
+            album: "",
+            duration: 0,
+            gradientStops: [
+                .init(color: .pairtunePrimary, location: 0),
+                .init(color: Color(hex: "4A1D3D"), location: 1)
+            ],
+            dominant: .pairtunePrimary,
+            artworkURL: item.artworkUrl.flatMap(URL.init(string:))
+        )
+        Task { await roomViewModel.playAsHost(track) }
+        showContext = false
+    }
+
     var body: some View {
         RoomView(
             roomViewModel: roomViewModel,
@@ -458,30 +583,15 @@ private struct RoomViewWrapper: View {
                 pairPlaylistItems = await pairPlaylistService.fetchItems(playlistId: pid)
             }
         }
-        .fullScreenCover(isPresented: $showContext) {
-            if roomViewModel.mode == .shared {
-                SharedContextView(
-                    sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
-                    pairPlaylist: pairPlaylistItems.map { $0.toViewTrack(
-                        myUserId: authViewModel.session?.user.id.uuidString ?? "",
-                        partnerName: pairViewModel.partnerProfile?.displayName
-                    ) },
-                    totalDays: daysSincePair(),
-                    totalSongs: soloHistoryVM.sharedHistory.count,
-                    totalDurationLabel: totalDurationLabel(soloHistoryVM.sharedHistory),
-                    showMemoryEntry: soloHistoryVM.sharedHistory.count >= 20 || daysSincePair() >= 7,
-                    anniversary: false,
-                    onBack: { showContext = false }
-                )
-            } else {
-                SoloContextView(
-                    state: soloContextState,
-                    sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
-                    myRecent: soloHistoryVM.myRecent.map { $0.toContextTrackCard() },
-                    partnerFavs: soloHistoryVM.partnerFavorites.map { $0.toContextTrackCard() },
-                    partnerName: pairViewModel.partnerProfile?.displayName ?? "さくら",
-                    onBack: { showContext = false }
-                )
+        .fullScreenCover(isPresented: $showContext, onDismiss: { contextPath = [] }) {
+            // NavigationStack で AllSessions / PairPlaylistDetail を push 可能にする
+            NavigationStack(path: $contextPath) {
+                contextRoot
+                    .navigationBarHidden(true)
+                    .navigationDestination(for: ContextRoute.self) { route in
+                        contextDetail(for: route)
+                            .navigationBarHidden(true)
+                    }
             }
         }
         .task {

@@ -41,6 +41,8 @@ struct ContextSessionTrack: Identifiable {
     let id: String
     let title: String
     let artist: String
+    /// Apple Music の artwork URL(失敗時はグラデにフォールバック)
+    var artworkUrl: URL? = nil
     /// アートワーク色(プレースホルダーグラデの始点 / 終点)
     let gradientStart: Color
     let gradientEnd: Color
@@ -51,10 +53,60 @@ struct PairPlaylistTrack: Identifiable {
     let id: String
     let title: String
     let artist: String
+    var artworkUrl: URL? = nil
     let gradientStart: Color
     let gradientEnd: Color
     /// 誰が追加したか("あなた" / "さくら" 等)
     let addedByLabel: String
+}
+
+// MARK: - Artwork tile (Context 画面で共通利用)
+//
+// AsyncImage で artwork を試して、失敗・URL 未設定時は gradient プレースホルダにフォールバックする。
+// SoloContextView / SharedContextView / ContextDetailViews から共通利用。
+
+struct TrackArtworkTile: View {
+    let url: URL?
+    let gradientStart: Color
+    let gradientEnd: Color
+    var size: CGFloat
+    var cornerRadius: CGFloat = 8
+    /// 追加の overlay(♥ バッジ等)
+    var topLeading: AnyView? = nil
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Group {
+                if let url {
+                    AsyncImage(url: url, transaction: Transaction(animation: .easeInOut(duration: 0.18))) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            gradientFallback
+                        }
+                    }
+                } else {
+                    gradientFallback
+                }
+            }
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+
+            if let topLeading {
+                topLeading
+            }
+        }
+        .frame(width: size, height: size)
+    }
+
+    private var gradientFallback: some View {
+        LinearGradient(
+            colors: [gradientStart, gradientEnd],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 }
 
 // MARK: - View
@@ -448,19 +500,19 @@ private struct SessionNode: View {
                     HStack(spacing: 6) {
                         ForEach(session.tracks.prefix(3)) { t in
                             Button { onTrack(t) } label: {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(LinearGradient(
-                                        colors: [t.gradientStart, t.gradientEnd],
-                                        startPoint: .topLeading, endPoint: .bottomTrailing
-                                    ))
-                                    .frame(width: 44, height: 44)
-                                    // jsx: inset 0 0 0 0.5px rgba(255,255,255,0.06)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .inset(by: 0.25)
-                                            .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-                                    )
-                                    .shadow(color: .black.opacity(0.4), radius: 6, y: 4)
+                                TrackArtworkTile(
+                                    url: t.artworkUrl,
+                                    gradientStart: t.gradientStart,
+                                    gradientEnd: t.gradientEnd,
+                                    size: 44,
+                                    cornerRadius: 8
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .inset(by: 0.25)
+                                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                                )
+                                .shadow(color: .black.opacity(0.4), radius: 6, y: 4)
                             }
                             .buttonStyle(.plain)
                         }
@@ -635,10 +687,26 @@ private struct PlaylistAlbumHero: View {
     @ViewBuilder
     private func mosaicTile(_ t: PairPlaylistTrack?) -> some View {
         if let t {
-            LinearGradient(
-                colors: [t.gradientStart, t.gradientEnd],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
+            // モザイクの 1 タイルにも artwork を試す(失敗時はグラデ)
+            Group {
+                if let url = t.artworkUrl {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            LinearGradient(
+                                colors: [t.gradientStart, t.gradientEnd],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
+                        }
+                    }
+                } else {
+                    LinearGradient(
+                        colors: [t.gradientStart, t.gradientEnd],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                }
+            }
             .frame(width: 48, height: 48)
         } else {
             Color.white.opacity(0.04).frame(width: 48, height: 48)

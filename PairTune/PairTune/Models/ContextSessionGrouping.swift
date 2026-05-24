@@ -80,6 +80,7 @@ enum ContextSessionGrouping {
                 id: entry.id,
                 title: entry.songTitle,
                 artist: entry.artistName,
+                artworkUrl: entry.artworkUrl.flatMap(URL.init(string:)),
                 gradientStart: gradientStart(for: entry.songId),
                 gradientEnd: gradientEnd(for: entry.songId)
             )
@@ -164,6 +165,7 @@ extension PlayHistoryEntry {
             id: id,
             title: songTitle,
             artist: artistName,
+            artworkUrl: artworkUrl.flatMap(URL.init(string:)),
             gradientStart: ContextSessionGrouping.gradientStart(for: songId),
             gradientEnd: ContextSessionGrouping.gradientEnd(for: songId)
         )

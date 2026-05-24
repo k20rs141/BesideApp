@@ -26,6 +26,7 @@ struct SoloContextTrackCard: Identifiable {
     let id: String
     let title: String
     let artist: String
+    var artworkUrl: URL? = nil
     let gradientStart: Color
     let gradientEnd: Color
 }
@@ -271,28 +272,27 @@ private struct MiniCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 7) {
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(LinearGradient(
-                            colors: [item.gradientStart, item.gradientEnd],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ))
-                        .frame(width: 108, height: 108)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-                        )
-                        .shadow(color: .black.opacity(0.45), radius: 11, y: 8)
-
-                    if favorite {
+                TrackArtworkTile(
+                    url: item.artworkUrl,
+                    gradientStart: item.gradientStart,
+                    gradientEnd: item.gradientEnd,
+                    size: 108,
+                    cornerRadius: 12,
+                    topLeading: favorite ? AnyView(
                         Image(systemName: "heart.fill")
                             .font(.system(size: 10))
                             .foregroundColor(.white)
                             .frame(width: 18, height: 18)
                             .background(Circle().fill(Color.pairtuneSecondary.opacity(0.8)))
                             .padding(6)
-                    }
-                }
+                    ) : nil
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.45), radius: 11, y: 8)
+
                 Text(item.title)
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(.white)
