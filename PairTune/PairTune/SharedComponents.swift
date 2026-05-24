@@ -337,7 +337,10 @@ struct ArtworkCardView: View {
     let state: SyncState
 
     private var playing: Bool { state == .playing }
-    private var dim: Double { (state == .paused || state == .idle) ? 0.5 : 1.0 }
+    // v0.5: paused 時に dim させていたが、ユーザー要望で playing と同じ見た目に統一。
+    // 回転が止まることだけで「停止中」を表現し、色やトーンは変えない。
+    // .idle (曲未読込) のみ薄暗くする。
+    private var dim: Double { state == .idle ? 0.5 : 1.0 }
 
     var body: some View {
         GeometryReader { geo in
