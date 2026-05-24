@@ -258,15 +258,29 @@ final class PairViewModel {
 
     func acceptIncoming() async {
         guard let req = pendingRequest else { return }
+
+        // 重要: showingCelebration は RPC を await する「前」に立てる。
+        //
+        // 順番を逆にすると、await の隙間で次のことが並行で起きる:
+        //   1. acceptRequest RPC が DB の pair_requests.status を 'accepted' に更新
+        //   2. postgres_changes UPDATE が即発火し、refreshPendingIncoming() が MainActor に queued
+        //   3. showingCelebration が false のまま refresh が走り、pendingRequest を nil 化
+        //   4. .sheet(item:) が閉じてしまい、Celebration body が一瞬も出ない
+        // → MainActor 上で「同期書き込み → 最初の await」の順にすることで、refresh の
+        //   guard(refreshPendingIncoming 冒頭の `if showingCelebration { return }`)を
+        //   確実に効かせる。
+        showingCelebration = true
+
         do {
             _ = try await pairService.acceptRequest(req.id)
             await refreshActivePair()
-            // sheet は閉じず、Celebration body に切り替える。
+            // sheet は閉じず、Celebration body に切り替わる。
             // pendingRequest は finishCelebration() で nil 化されて sheet 閉じる。
-            showingCelebration = true
         } catch {
+            // 失敗時は Celebration フラグを戻して通常 incoming 表示に戻す
+            showingCelebration = false
             print("[PairViewModel] accept error:", error)
-            // 失敗時はモーダルは閉じない(ユーザーが再試行できるように)
+            // モーダルは閉じない(ユーザーが再試行できるように)
             // 期限切れ等は postgres_changes UPDATE で自然に消える
         }
     }
