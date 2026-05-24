@@ -474,46 +474,36 @@ struct ArtistDetailView: View {
                 onSelectAlbum: onSelectAlbum
             )
         } label: {
-            HStack(spacing: 6) {
+            // v0.5: 「日本語タイトル 13pt 600 + 小 chevron」のシンプルな affordance(jsx と一致)
+            HStack(spacing: 7) {
                 Text("トップソング")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-                    .tracking(0.2)
-                Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color(hex: "7A7588"))
-                Text("TOP SONGS")
-                    .font(.system(size: 10.5))
-                    .foregroundColor(Color(hex: "5A5566"))
-                    .tracking(0.5)
-                    .padding(.leading, 4)
+                    .foregroundColor(.white)
+                    .tracking(0.3)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(hex: "A8A8A8"))
                 Spacer()
-                Text("もっと見る")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(hex: "7A7588"))
             }
+            .padding(.horizontal, 22)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private func sectionHeader(_ ja: String, _ en: String) -> some View {
-        HStack(spacing: 6) {
+    // v0.5: 英語サブ撤去、jsx 通り「日本語 18pt 700 + chevron」のみ
+    private func sectionHeader(_ ja: String, _ en: String = "") -> some View {
+        HStack(spacing: 7) {
             Text(ja)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.white)
                 .tracking(0.2)
             Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(hex: "7A7588"))
-            Text(en)
-                .font(.system(size: 10.5))
-                .foregroundColor(Color(hex: "5A5566"))
-                .tracking(0.5)
-                .padding(.leading, 4)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(hex: "A8A8A8"))
             Spacer()
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 22)
     }
 
     // MARK: - Send-to-partner CTA
@@ -710,25 +700,29 @@ private struct AlbumCardView: View {
                     placeholder
                 }
             }
-            .frame(width: 140, height: 140)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            // jsx: 158×158、cornerRadius 8、shadow 0 10 26 black04 + inset 0.5 white06
+            .frame(width: 158, height: 158)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.white.opacity(0.05), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+            .shadow(color: .black.opacity(0.45), radius: 10, y: 10)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.title)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white)
+                    .tracking(0.1)
                     .lineLimit(1)
-                Text(album.artistName)
-                    .font(.system(size: 11))
-                    .foregroundColor(.pairtuneTextSecondary)
-                    .lineLimit(1)
+                if !album.artistName.isEmpty {
+                    Text(album.artistName)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "7A7588"))
+                        .lineLimit(1)
+                }
             }
-            .frame(width: 140, alignment: .leading)
+            .frame(width: 158, alignment: .leading)
         }
     }
 
