@@ -45,6 +45,64 @@
 - 新規 Swift Package を追加する前に必ず確認
 - 現時点の依存: supabase-swift のみ (M1 で追加予定)
 
+### 6. SwiftUI Layout Pitfalls(横はみ出し)
+
+新規 View(特に背景グローや装飾のある画面)を作るときは、以下のテンプレートに沿って書くこと。
+過去に複数の Context 画面で同じ「画面幅より大きく描画される」バグを繰り返しているため必読。
+
+**症状**: 実機/シミュレータで右端が見切れる、または横方向にスクロールしてしまう。
+ビルドや SwiftUI Preview では気づきにくい。
+
+**原因**:
+- `.frame(width: 600)` 等の**画面幅より大きい固定 width** を ZStack/VStack/HStack の子に直接置くと、
+  親の layout box がその値まで広がり、兄弟の content も右側へ押し出される
+- ambient glow / radial gradient のような装飾を画面より大きく描いて視覚的にブリードさせる手法は
+  jsx でよく使われるが、SwiftUI の `.frame` は ideal size を申告するので副作用が大きい
+- `ScrollView(.vertical)` は content の horizontal 幅を自動的には制約しない
+
+**回避テンプレ**:
+```swift
+var body: some View {
+    ZStack {
+        Color.pairtuneBase.ignoresSafeArea()
+
+        // 装飾は Color.clear.overlay で包む(親サイズに固定、内部は overlay の bounds で clip)
+        Color.clear
+            .overlay {
+                Ellipse()
+                    .fill(...)
+                    .frame(width: 600, height: 380)   // ← 画面より大きくても OK
+                    .blur(radius: 60)
+                    .offset(y: -240)
+                    .allowsHitTesting(false)
+            }
+            .clipped()
+            .ignoresSafeArea()
+
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 24) {
+                // 中身
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)   // ← 必須
+            .padding(.bottom, 60)
+        }
+        .clipped()   // ← 念のため
+    }
+    .clipped()   // ← 念のため
+}
+```
+
+**チェックリスト**(新規 View レビュー時):
+- [ ] 装飾(glow / radial gradient)は `Color.clear.overlay { ... }` で包んでいるか
+- [ ] ScrollView 内の root VStack に `.frame(maxWidth: .infinity, alignment: .leading)` があるか
+- [ ] 外側 ZStack / ScrollView に `.clipped()` があるか
+- [ ] 横スクロール ScrollView(.horizontal) も `.frame(maxWidth: .infinity)` で外形を固定しているか
+- [ ] 長い Text には `.fixedSize(horizontal: false, vertical: true)` で wrap を保証しているか
+- [ ] 390pt 幅のシミュレータで実機確認したか
+
+**過去にハマった画面**: HomeView, SoloContextView, SharedContextView, AllSessionsView,
+SessionDetailView, PairPlaylistDetailView。同じパターンを別の画面で再発させないこと。
+
 ## File Structure
 
 ```
@@ -91,7 +149,11 @@ xcodebuild test -scheme BesideApp -destination 'platform=iOS Simulator,name=iPho
 
 ## Don't Do
 
-- View ファイル (`SignInView.swift` 等) のレイアウト変更
+- 装飾用の `Ellipse()` / `Rectangle()` 等を `.frame(width: 画面幅より大きい値)` で
+  ZStack の子に**直接**置く(→ §6 の Color.clear.overlay パターンで包む)
+- `ScrollView(.vertical)` の content VStack に `.frame(maxWidth: .infinity)` を付け忘れる
+- ビルドが通っただけで「OK」と判断する(右はみ出しは Preview/ビルドでは気づけない、
+  必ず 390pt 幅シミュレータで実機確認)
 - エラーハンドリング UI の先行実装 (M6 でまとめて行う)
 - 仕様書にない機能の追加実装
 - `DispatchQueue.main.async` の使用 → `async/await + @MainActor` で書く
