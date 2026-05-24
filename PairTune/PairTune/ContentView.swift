@@ -194,19 +194,7 @@ struct ContentView: View {
                             }
                         }
                     },
-                    onProfile: { showSettings = true },
-                    onOpenAndWait: {
-                        // v0.5: Home 2 状態化により onOpenAndWait は onListenWithPartner と等価。
-                        // オフラインでも shared_room に入り、相手が来たら Presence で自動合流。
-                        gateThenRun(intent: .shared) {
-                            Task {
-                                guard let pair = pairViewModel.activePair else { return }
-                                await homeViewModel.loadSharedRoom(roomId: pair.sharedRoomId)
-                                guard let sharedRoom = homeViewModel.sharedRoom else { return }
-                                roomViewModel = RoomViewModel(sharedRoomV4: sharedRoom, pairId: pair.id)
-                            }
-                        }
-                    }
+                    onProfile: { showSettings = true }
                 )
                 .toolbar(.hidden, for: .navigationBar)
                 // 設定: Navigation push（HIG — 階層的ドリルダウン）
