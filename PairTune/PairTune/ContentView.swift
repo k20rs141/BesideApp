@@ -441,6 +441,32 @@ private struct RoomViewWrapper: View {
     /// v0.5: Room から push される文脈画面の表示状態
     @State private var showContext: Bool = false
 
+    /// Solo Context の状態判定。pair あり = full / empty、pair なし = deleted。
+    /// memory(preserve_memories=TRUE で ended)は将来追加(pair_relationships の status を見るため別途取得が必要)。
+    private var soloContextState: SoloContextState {
+        if pairViewModel.activePair == nil {
+            return soloHistoryVM.sharedHistory.isEmpty ? .deleted : .memory
+        }
+        return soloHistoryVM.sharedHistory.isEmpty ? .empty : .full
+    }
+
+    /// ペアリングしてからの日数(0 起算)。activePair なしの時は 0。
+    private func daysSincePair() -> Int {
+        guard let pair = pairViewModel.activePair else { return 0 }
+        let interval = Date().timeIntervalSince(pair.pairedAt)
+        return max(0, Int(interval / 86400))
+    }
+
+    /// shared history の総再生時間ラベル("5 時間 23 分" など)。
+    private func totalDurationLabel(_ entries: [PlayHistoryEntry]) -> String {
+        let totalSeconds = entries.reduce(0) { $0 + $1.playedDurationSeconds }
+        let m = totalSeconds / 60
+        if m < 60 { return "\(m) 分" }
+        let h = m / 60
+        let rem = m % 60
+        return rem == 0 ? "\(h) 時間" : "\(h) 時間 \(rem) 分"
+    }
+
     var body: some View {
         RoomView(
             roomViewModel: roomViewModel,
@@ -474,21 +500,21 @@ private struct RoomViewWrapper: View {
         .fullScreenCover(isPresented: $showContext) {
             if roomViewModel.mode == .shared {
                 SharedContextView(
-                    sessions: [],   // TODO: SoloHistoryViewModel.sharedHistory をセッション単位にグルーピングして渡す
-                    pairPlaylist: [],
-                    totalDays: 0,
+                    sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
+                    pairPlaylist: [],   // v1.1: PairPlaylistService 経由でロード予定
+                    totalDays: daysSincePair(),
                     totalSongs: soloHistoryVM.sharedHistory.count,
-                    totalDurationLabel: "—",
-                    showMemoryEntry: false,
+                    totalDurationLabel: totalDurationLabel(soloHistoryVM.sharedHistory),
+                    showMemoryEntry: soloHistoryVM.sharedHistory.count >= 20 || daysSincePair() >= 7,
                     anniversary: false,
                     onBack: { showContext = false }
                 )
             } else {
                 SoloContextView(
-                    state: .empty,
-                    sessions: [],   // TODO: 同上
-                    myRecent: [],
-                    partnerFavs: [],
+                    state: soloContextState,
+                    sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
+                    myRecent: soloHistoryVM.myRecent.map { $0.toContextTrackCard() },
+                    partnerFavs: soloHistoryVM.partnerFavorites.map { $0.toContextTrackCard() },
                     partnerName: pairViewModel.partnerProfile?.displayName ?? "さくら",
                     onBack: { showContext = false }
                 )
