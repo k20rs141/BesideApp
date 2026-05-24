@@ -84,67 +84,82 @@ struct PairApprovalSheet: View {
     }
 
     // MARK: - Incoming body
+    //
+    // jsx の構造:
+    //   - Header: 「あとで」 / 「ペアリング申請」 18pt #7A7588 / spacer
+    //   - Top group(中央): avatar 72×72 + 2 重 pulse ring + name 18pt 500 + 大タイトル
+    //   - Bottom group: expiry card(縦積み)+ ヒント
+    //   - Footer: 承認 big + [拒否][あとで] 横並び
 
     @ViewBuilder
     private var incomingBody: some View {
-        // Top label
-        HStack(spacing: 8) {
-            PairTuneLogoView(size: 42)
-                .frame(width: 42, height: 15)
-            Text("ペアリング申請")
-                .font(.system(size: 11))
-                .foregroundColor(Color(hex: "7A7588"))
-                .tracking(0.5)
-                .textCase(.uppercase)
+        // Header
+        HStack {
+            Button(action: onDefer) {
+                Text("あとで")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(hex: "A8A8A8"))
+                    .padding(6)
+            }
             Spacer()
+            Text("ペアリング申請")
+                .font(.system(size: 18))
+                .tracking(0.5)
+                .foregroundColor(Color(hex: "7A7588"))
+            Spacer()
+            Color.clear.frame(width: 50, height: 1)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 32)
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
 
-        Spacer(minLength: 0)
-
+        // Top group(中央配置)
         VStack(spacing: 0) {
+            Spacer(minLength: 0)
+
             avatarWithWaves
-            Text(displayName)
-                .font(.system(size: 22, weight: .medium))
+
+            Text("\(displayName) さん")
+                .font(.system(size: 18, weight: .medium))
                 .foregroundColor(.white)
+                .tracking(0.1)
+                .padding(.top, 22)
+
+            if let code = requester?.pairingCode, !code.isEmpty {
+                Text("@\(code.lowercased())")
+                    .font(.system(size: 11.5))
+                    .foregroundColor(Color(hex: "7A7588"))
+                    .tracking(0.3)
+                    .padding(.top, 3)
+            }
+
+            Text("\(displayName) さんがあなたと\nペアリングしたがっています")
+                .font(.system(size: 21, weight: .medium))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineSpacing(6)
                 .tracking(0.2)
                 .padding(.top, 24)
+                .padding(.horizontal, 28)
 
-            if let code = requester?.pairingCode {
-                Text(code)
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(Color(hex: "7A7588"))
-                    .tracking(2)
-                    .padding(.top, 4)
-            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxHeight: .infinity)
 
-            VStack(spacing: 0) {
-                Text("\(displayName) さんがあなたと")
-                Text("ペアリング").fontWeight(.medium).foregroundColor(.white) + Text("したがっています")
-            }
-            .font(.system(size: 15))
-            .foregroundColor(.white.opacity(0.78))
-            .multilineTextAlignment(.center)
-            .lineSpacing(6)
-            .padding(.top, 18)
-            .padding(.horizontal, 28)
-
-            metaCard
-                .padding(.top, 22)
-                .padding(.horizontal, 22)
+        // Bottom group(footer 寄り)
+        VStack(spacing: 18) {
+            expiryCard
+                .padding(.horizontal, 28)
 
             Text("承認すると、ふたりだけのルームが作られます。\nいつでも解消できます。")
-                .font(.system(size: 10.5))
+                .font(.system(size: 11))
                 .foregroundColor(Color(hex: "5A5566"))
-                .tracking(0.4)
                 .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .padding(.top, 18)
+                .lineSpacing(5)
+                .tracking(0.2)
         }
+        .padding(.bottom, 24)
 
-        Spacer(minLength: 16)
-
+        // Footer CTAs
         VStack(spacing: 10) {
             acceptButton
             HStack(spacing: 10) {
@@ -156,57 +171,67 @@ struct PairApprovalSheet: View {
         .padding(.bottom, 36)
     }
 
+    /// jsx: 72×72 avatar + 2 重 pulse ring(inset -20 / -40, primary28 / primary1a)
     private var avatarWithWaves: some View {
         ZStack {
-            Circle()
-                .stroke(Color.pairtunePrimary.opacity(0.16), lineWidth: 0.5)
-                .frame(width: 140, height: 140)
+            // 外側ハロー(animated pulse、2.4s)
             Circle()
                 .stroke(Color.pairtunePrimary.opacity(0.10), lineWidth: 0.5)
-                .frame(width: 184, height: 184)
-
+                .frame(width: 152, height: 152)
+                .opacity(0.4 + 0.6 * sin(now.timeIntervalSinceReferenceDate * .pi / 1.2 + .pi))
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.pairtunePrimary, Color.pairtunePrimary.opacity(0.65)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 96, height: 96)
+                .stroke(Color.pairtunePrimary.opacity(0.16), lineWidth: 0.5)
+                .frame(width: 112, height: 112)
+                .opacity(0.4 + 0.6 * sin(now.timeIntervalSinceReferenceDate * .pi / 1.2))
+
+            // 中央 avatar 72×72
+            Circle()
+                .fill(LinearGradient(
+                    colors: [Color.pairtuneSecondary, Color.pairtuneSecondary.opacity(0.65)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .frame(width: 72, height: 72)
                 .overlay(
                     Text(requesterInitial)
-                        .font(.system(size: 36, weight: .semibold))
-                        .foregroundColor(Color(red: 0x0A/255, green: 0x06/255, blue: 0x12/255))
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundColor(Color(hex: "0A0612"))
                 )
-                .overlay(
-                    Circle().stroke(Color.white.opacity(0.10), lineWidth: 1.5)
-                )
-                .shadow(color: Color.pairtunePrimary.opacity(0.27), radius: 18, y: 8)
+                .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 1.5))
+                .shadow(color: Color.pairtuneSecondary.opacity(0.27), radius: 18, y: 14)
         }
     }
 
-    private var metaCard: some View {
-        let remaining = max(0, request.expiresAt.timeIntervalSince(now))
-        let h = Int(remaining) / 3600
-        let m = (Int(remaining) % 3600) / 60
-        let s = Int(remaining) % 60
-        let percent = remaining / (24 * 3600)
-        return HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                metaRow(key: "申請日時", value: formatDate(request.createdAt))
-                metaRow(
-                    key: "期限",
-                    value: String(format: "%02d:%02d:%02d 残り", h, m, s),
-                    valueColor: h < 6 ? Color(hex: "F4C26A") : .white
-                )
-            }
-            Spacer(minLength: 0)
-            CountdownRingView(percent: percent, accent: .pairtunePrimary)
-                .frame(width: 48, height: 48)
+    /// jsx の縦積み expiry card(PairWaitingView と同じ構造)
+    private var expiryCard: some View {
+        let remaining = max(0, Int(request.expiresAt.timeIntervalSince(now)))
+        let h = remaining / 3600
+        let m = (remaining % 3600) / 60
+        let s = remaining % 60
+        let hh = String(format: "%02d", h)
+        let mm = String(format: "%02d", m)
+        let ss = String(format: "%02d", s)
+        return VStack(spacing: 6) {
+            Text("承認期限まで")
+                .font(.system(size: 10.5))
+                .foregroundColor(Color(hex: "7A7588"))
+                .tracking(0.6)
+                .textCase(.uppercase)
+            Text("\(hh):\(mm):\(ss)")
+                .font(.system(size: 17, weight: .medium, design: .monospaced))
+                .foregroundColor(h < 6 ? Color(hex: "F4C26A") : .white)
+                .tracking(1)
+                .monospacedDigit()
+            Text("\(formatDate(request.createdAt)) に申請されました")
+                .font(.system(size: 10.5))
+                .foregroundColor(Color(hex: "7A7588"))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .tracking(0.2)
+                .padding(.top, 2)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.03))
@@ -215,20 +240,6 @@ struct PairApprovalSheet: View {
                         .stroke(Color.white.opacity(0.07), lineWidth: 0.5)
                 )
         )
-    }
-
-    private func metaRow(key: String, value: String, valueColor: Color = .white) -> some View {
-        HStack {
-            Text(key)
-                .font(.system(size: 11))
-                .foregroundColor(Color(hex: "7A7588"))
-                .tracking(0.3)
-            Spacer()
-            Text(value)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(valueColor)
-                .tracking(0.2)
-        }
     }
 
     private var acceptButton: some View {
@@ -301,74 +312,68 @@ struct PairApprovalSheet: View {
     }
 
     // MARK: - Celebration body
+    //
+    // jsx の構造:
+    //   - Top group(中央): twin avatars 64×64 gap 24 + 3 重 concentric ripples 120×120 +
+    //                       「ペアになりました」 21pt 500 + sub 12.5pt
+    //   - Footer: primary CTA「ふたりの部屋を開く」(arrow icon + text)
+    //   - 接続波 (CelebrationWaveView) は jsx では使わないので撤去
 
     @ViewBuilder
     private func celebrationBody(partnerName: String, partnerInitial: String) -> some View {
-        Spacer(minLength: 40)
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
 
-        ZStack {
-            // Ripples
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .stroke(Color.pairtunePrimary.opacity(0.25), lineWidth: 1)
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(rippleScale(for: i))
-                    .opacity(rippleOpacity(for: i))
-                    .animation(
-                        .easeOut(duration: 2.4)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(i) * 0.6),
-                        value: pulseTrigger
-                    )
+            // Twin avatars + concentric ripples
+            ZStack {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .stroke(Color.pairtunePrimary.opacity(0.25), lineWidth: 1)
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(rippleScale(for: i))
+                        .opacity(rippleOpacity(for: i))
+                        .animation(
+                            .easeOut(duration: 2.4)
+                                .repeatForever(autoreverses: false)
+                                .delay(Double(i) * 0.6),
+                            value: pulseTrigger
+                        )
+                }
+
+                HStack(spacing: 24) {
+                    celebrationAvatar(initial: myInitial, color: .pairtunePrimary)
+                    celebrationAvatar(initial: partnerInitial, color: Color(hex: "FF6B9D"))
+                }
             }
+            .frame(height: 110)
 
-            // Twin avatars + wave
-            HStack(spacing: 16) {
-                celebrationAvatar(initial: myInitial, color: .pairtunePrimary)
-                    .offset(x: 0)
+            VStack(spacing: 14) {
+                Text("ペアになりました")
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundColor(.white)
+                    .tracking(0.2)
 
-                celebrationAvatar(initial: partnerInitial, color: Color(hex: "FF6B9D"))
-                    .offset(x: 0)
+                Text("ふたりだけの部屋ができました。\nいつでも、同じ音を。")
+                    .font(.system(size: 12.5))
+                    .foregroundColor(Color(hex: "7A7588"))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(5)
+                    .tracking(0.2)
             }
+            .padding(.top, 32)
+            .opacity(pulseTrigger > 0 ? 1 : 0)
+            .animation(.easeOut(duration: 0.7).delay(1.0), value: pulseTrigger)
 
-            // Connecting wave
-            CelebrationWaveView(primary: .pairtunePrimary, secondary: .pairtuneSecondary)
-                .frame(width: 84, height: 36)
+            Spacer(minLength: 0)
         }
-        .frame(height: 130)
+        .frame(maxHeight: .infinity)
 
-        VStack(spacing: 8) {
-            // v0.5: 英語サブコピーを撤去し、jsx の感情的タグラインに置換
-            Text("ペアになりました")
-                .font(.system(size: 24, weight: .medium))
-                .foregroundColor(.white)
-                .tracking(0.4)
-
-            Text("ふたりだけの部屋ができました。\nいつでも、同じ音を。")
-                .font(.system(size: 13))
-                .foregroundColor(.white.opacity(0.55))
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .tracking(0.3)
-        }
-        .padding(.top, 32)
-        .opacity(pulseTrigger > 0 ? 1 : 0)
-        .animation(.easeOut(duration: 0.7).delay(1.0), value: pulseTrigger)
-
-        Text("ふたりだけの部屋ができました。\nいつでも、同じ音を。")
-            .font(.system(size: 12.5))
-            .foregroundColor(Color(hex: "7A7588"))
-            .multilineTextAlignment(.center)
-            .lineSpacing(5)
-            .padding(.top, 18)
-
-        Spacer()
-
+        // Primary CTA
         Button(action: onEnterRoom) {
             HStack(spacing: 10) {
-                Text("ふたりの部屋を開く")
-                    .font(.system(size: 16, weight: .semibold))
                 Image(systemName: "arrow.right")
+                    .font(.system(size: 16, weight: .semibold))
+                Text("ふたりの部屋を開く")
                     .font(.system(size: 16, weight: .semibold))
             }
             .foregroundColor(.white)
@@ -376,14 +381,11 @@ struct PairApprovalSheet: View {
             .frame(height: 60)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.pairtunePrimary, Color.pairtuneSecondary],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(color: Color.pairtunePrimary.opacity(0.33), radius: 16, y: 6)
+                    .fill(LinearGradient(
+                        colors: [Color.pairtunePrimary, Color.pairtuneSecondary],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    ))
+                    .shadow(color: Color.pairtunePrimary.opacity(0.33), radius: 16, y: 8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
@@ -396,25 +398,21 @@ struct PairApprovalSheet: View {
         .animation(.easeOut(duration: 0.6).delay(1.4), value: pulseTrigger)
     }
 
+    /// 64×64 jsx の Celebration アバター
     private func celebrationAvatar(initial: String, color: Color) -> some View {
         Circle()
-            .fill(
-                LinearGradient(
-                    colors: [color, color.opacity(0.65)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .frame(width: 72, height: 72)
+            .fill(LinearGradient(
+                colors: [color, color.opacity(0.65)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+            .frame(width: 64, height: 64)
             .overlay(
                 Text(initial)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundColor(Color(red: 0x0A/255, green: 0x06/255, blue: 0x12/255))
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(Color(hex: "0A0612"))
             )
-            .overlay(
-                Circle().stroke(Color.white.opacity(0.12), lineWidth: 1.5)
-            )
-            .shadow(color: color.opacity(0.40), radius: 16, y: 8)
+            .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 1.5))
+            .shadow(color: color.opacity(0.4), radius: 14, y: 8)
     }
 
     private func rippleScale(for i: Int) -> CGFloat {
@@ -455,58 +453,8 @@ struct PairApprovalSheet: View {
     }
 }
 
-// MARK: - Countdown ring
+// v0.5: 縦積み expiry card に統合したため、CountdownRingView は撤去。
 
-private struct CountdownRingView: View {
-    let percent: Double
-    let accent: Color
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 2.5)
-
-            Circle()
-                .trim(from: 0, to: max(0, min(1, percent)))
-                .stroke(accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-
-            Text("24h")
-                .font(.system(size: 9))
-                .foregroundColor(Color(hex: "A8A8A8"))
-                .tracking(0.2)
-        }
-    }
-}
-
-// MARK: - Celebration wave
-
-private struct CelebrationWaveView: View {
-    let primary: Color
-    let secondary: Color
-
-    var body: some View {
-        Canvas { ctx, size in
-            let h = size.height
-            let w = size.width
-            let mid = h / 2
-
-            var upper = Path()
-            upper.move(to: CGPoint(x: 2, y: mid))
-            upper.addQuadCurve(to: CGPoint(x: 22, y: mid), control: CGPoint(x: 12, y: 6))
-            upper.addQuadCurve(to: CGPoint(x: 42, y: mid), control: CGPoint(x: 32, y: 6))
-            upper.addQuadCurve(to: CGPoint(x: 62, y: mid), control: CGPoint(x: 52, y: 6))
-            upper.addQuadCurve(to: CGPoint(x: w - 2, y: mid), control: CGPoint(x: 72, y: 6))
-
-            var lower = Path()
-            lower.move(to: CGPoint(x: 2, y: mid))
-            lower.addQuadCurve(to: CGPoint(x: 22, y: mid), control: CGPoint(x: 12, y: h - 6))
-            lower.addQuadCurve(to: CGPoint(x: 42, y: mid), control: CGPoint(x: 32, y: h - 6))
-            lower.addQuadCurve(to: CGPoint(x: 62, y: mid), control: CGPoint(x: 52, y: h - 6))
-            lower.addQuadCurve(to: CGPoint(x: w - 2, y: mid), control: CGPoint(x: 72, y: h - 6))
-
-            ctx.stroke(upper, with: .color(primary), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            ctx.stroke(lower, with: .color(secondary), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-        }
-    }
-}
+// v0.5: jsx に合わせて Celebration 接続波(CelebrationWaveView)は撤去。
+// 旧 v0.4 のドリーミー演出として twin avatar 間に dashed wave を描いていたが、
+// v0.5 では concentric ripples だけに集約された(screens-pairing-approval.jsx)。

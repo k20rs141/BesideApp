@@ -498,30 +498,10 @@ struct ProfileView: View {
 
     // MARK: - Notifications group
 
+    // v0.5: 通知トグルは「相手がオンラインになった時」のみ(chat6 §12.5 / jsx)
+    // 「記念日のお知らせ」「1 年前の今日」は v1.2 で UI 化される時に復活させる予定
     private var notificationsGroup: some View {
         SettingsGroup(label: "通知", icon: "bell", accent: .pairtuneSecondary) {
-            SettingsToggleRow(
-                title: "記念日のお知らせ",
-                description: "1 ヶ月、100 日、1 周年など節目だけお知らせ。",
-                isOn: $notifyMilestones,
-                accent: .pairtunePrimary
-            )
-            .onChange(of: notifyMilestones) { _, newValue in
-                Task {
-                    await authViewModel.updateNotificationSettings(
-                        notifyPartnerOnline: notifyPartnerOnline,
-                        notifyMilestones: newValue
-                    )
-                }
-            }
-            SettingsDivider()
-            SettingsToggleRow(
-                title: "1 年前の今日",
-                description: "去年同じ日に聴いた曲を、控えめに思い出させます。",
-                isOn: $notifyYearAgo,
-                accent: .pairtunePrimary
-            )
-            SettingsDivider()
             SettingsToggleRow(
                 title: "相手がオンラインになった時",
                 description: "",
