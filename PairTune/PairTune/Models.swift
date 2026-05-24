@@ -108,11 +108,9 @@ let mockTrack = Track(
 
 let mockCode = "KTOMSO"
 
+// v0.5: Guest モード廃止。2 人特化 (You + Sakura) なので 3 人目以降のアバターは存在しない。
 let mockParticipants: [Participant] = [
-    Participant(id: "me",  name: "You", nameJa: "あなた", role: .host,  color: .pairtuneCoral,          initials: "YO"),
-    Participant(id: "aoi", name: "Aoi", nameJa: "あおい", role: .guest, color: Color(hex: "7BD389"),  initials: "AO"),
-    Participant(id: "ren", name: "Ren", nameJa: "れん",   role: .guest, color: Color(hex: "6BB6F0"),  initials: "RE"),
-    Participant(id: "mio", name: "Mio", nameJa: "みお",   role: .guest, color: Color(hex: "F4C26A"),  initials: "MI"),
-    Participant(id: "kai", name: "Kai", nameJa: "かい",   role: .guest, color: Color(hex: "C49AF4"),  initials: "KA"),
+    Participant(id: "me",      name: "You",    nameJa: "あなた", role: .host,  color: .pairtuneCoral,       initials: "YO"),
+    Participant(id: "partner", name: "Sakura", nameJa: "さくら", role: .guest, color: Color(hex: "FF6B9D"), initials: "SA"),
 ]
 
