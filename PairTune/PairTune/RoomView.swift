@@ -14,6 +14,10 @@ struct RoomView: View {
     var partnerAvatarUrl: String? = nil
     var onExit: () -> Void
     var onSelectTrack: (Track) -> Void
+    /// v0.5: 文脈画面(Solo/SharedContextView)を push で開く
+    var onOpenContext: () -> Void = {}
+    /// v1.1: 再生中の曲を「ふたりのプレイリスト」に残す(Shared のみ表示)
+    var onSaveToPlaylist: (() -> Void)? = nil
 
     @State private var toastMessage: String? = nil
     @State private var showSearch: Bool = false
@@ -33,7 +37,9 @@ struct RoomView: View {
         myAvatarUrl: String? = nil,
         partnerAvatarUrl: String? = nil,
         onExit: @escaping () -> Void,
-        onSelectTrack: @escaping (Track) -> Void
+        onSelectTrack: @escaping (Track) -> Void,
+        onOpenContext: @escaping () -> Void = {},
+        onSaveToPlaylist: (() -> Void)? = nil
     ) {
         self.roomViewModel = roomViewModel
         self.isHost = isHost
@@ -45,6 +51,8 @@ struct RoomView: View {
         self.partnerAvatarUrl = partnerAvatarUrl
         self.onExit = onExit
         self.onSelectTrack = onSelectTrack
+        self.onOpenContext = onOpenContext
+        self.onSaveToPlaylist = onSaveToPlaylist
         _searchViewModel = State(initialValue: SearchViewModel(roomViewModel: roomViewModel))
     }
 
@@ -117,8 +125,12 @@ struct RoomView: View {
                         // Participants + controls
                         VStack(spacing: 14) {
                             participantsRow
+                            if roomViewModel.mode == .shared && (partnerName == nil || participantCount < 2) {
+                                waitingForPartner
+                            }
                             if isHost { hostControls }
                             else       { guestLabel }
+                            secondaryActions
                         }
                         .padding(.horizontal, 22)
                         .padding(.bottom, 38)
@@ -479,6 +491,82 @@ struct RoomView: View {
             .foregroundColor(.pairtuneTextQuaternary)
             .tracking(0.5)
             .padding(.top, 14)
+    }
+
+    // MARK: - Secondary actions row (v0.5: 文脈ボタン / ★ プレイリスト追加)
+
+    private var secondaryActions: some View {
+        HStack(spacing: 22) {
+            Spacer()
+            Button(action: onOpenContext) {
+                VStack(spacing: 3) {
+                    Image(systemName: "rectangle.stack")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("ふたりの音楽")
+                        .font(.system(size: 10, weight: .medium))
+                        .tracking(0.2)
+                }
+                .foregroundColor(Color.pairtuneTextSecondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(0.04))
+                        .overlay(
+                            Capsule().stroke(Color.pairtunePrimary.opacity(0.18), lineWidth: 0.5)
+                        )
+                )
+            }
+
+            if let onSaveToPlaylist, roomViewModel.mode == .shared, syncState != .idle {
+                Button {
+                    onSaveToPlaylist()
+                    showToast("プレイリストに追加しました")
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("プレイリスト")
+                            .font(.system(size: 10, weight: .medium))
+                            .tracking(0.2)
+                    }
+                    .foregroundColor(.pairtunePrimary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color.pairtunePrimary.opacity(0.10))
+                            .overlay(
+                                Capsule().stroke(Color.pairtunePrimary.opacity(0.27), lineWidth: 0.5)
+                            )
+                    )
+                }
+            }
+            Spacer()
+        }
+        .padding(.top, 4)
+    }
+
+    // MARK: - Waiting-for-partner indicator (Shared モード、相手不在時)
+
+    private var waitingForPartner: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color.pairtuneSyncWarn)
+                .frame(width: 6, height: 6)
+                .opacity(0.85)
+            Text("\(partnerName ?? "相手") さんを待っています")
+                .font(.system(size: 11.5))
+                .foregroundColor(Color.pairtuneSyncWarn)
+                .tracking(0.3)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(Color.pairtuneSyncWarn.opacity(0.08))
+                .overlay(Capsule().stroke(Color.pairtuneSyncWarn.opacity(0.21), lineWidth: 0.5))
+        )
     }
 
     private var disconnectBanner: some View {

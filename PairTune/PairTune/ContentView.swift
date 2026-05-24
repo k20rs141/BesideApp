@@ -303,12 +303,13 @@ struct ContentView: View {
                 }
             }
 
-            // ルーム: ZStack オーバーレイ（fullScreenCover 内の .sheet 競合を回避）
+            // ルーム: ZStack オーバーレイ(fullScreenCover 内の .sheet 競合を回避)
             if let vm = roomViewModel {
                 RoomViewWrapper(
                     roomViewModel: vm,
                     authViewModel: authViewModel,
                     pairViewModel: pairViewModel,
+                    soloHistoryVM: soloHistoryVM,
                     onExit: {
                         // 再生中の閉じるは RoomView のダイアログで「閉じる(再生は続ける)」を選んだ後のみ
                         // 到達する。leaveRoom は keepPlaying=true で呼び、ApplicationMusicPlayer.shared
@@ -433,9 +434,12 @@ private struct RoomViewWrapper: View {
     @Bindable var roomViewModel: RoomViewModel
     let authViewModel: AuthViewModel
     let pairViewModel: PairViewModel
+    let soloHistoryVM: SoloHistoryViewModel
     var onExit: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
+    /// v0.5: Room から push される文脈画面の表示状態
+    @State private var showContext: Bool = false
 
     var body: some View {
         RoomView(
@@ -448,8 +452,48 @@ private struct RoomViewWrapper: View {
             myAvatarUrl: authViewModel.currentProfile?.avatarUrl,
             partnerAvatarUrl: pairViewModel.partnerProfile?.avatarUrl,
             onExit: onExit,
-            onSelectTrack: { _ in }
+            onSelectTrack: { _ in },
+            onOpenContext: {
+                Task {
+                    let userId = authViewModel.session?.user.id.uuidString ?? ""
+                    let partnerId = pairViewModel.activePair?.partnerUserId(meId: userId.lowercased())
+                    await soloHistoryVM.load(
+                        pairId: pairViewModel.activePair?.id,
+                        userId: userId,
+                        partnerUserId: partnerId
+                    )
+                    showContext = true
+                }
+            },
+            onSaveToPlaylist: roomViewModel.mode == .shared ? {
+                // v1.1: ふたりのプレイリストに現在曲を追加。
+                // 実 DB 連携(pair_playlists / pair_playlist_items への INSERT)は別途 ViewModel/Service で実装する。
+                // ここではトーストだけが先行表示される(RoomView 側)。
+            } : nil
         )
+        .fullScreenCover(isPresented: $showContext) {
+            if roomViewModel.mode == .shared {
+                SharedContextView(
+                    sessions: [],   // TODO: SoloHistoryViewModel.sharedHistory をセッション単位にグルーピングして渡す
+                    pairPlaylist: [],
+                    totalDays: 0,
+                    totalSongs: soloHistoryVM.sharedHistory.count,
+                    totalDurationLabel: "—",
+                    showMemoryEntry: false,
+                    anniversary: false,
+                    onBack: { showContext = false }
+                )
+            } else {
+                SoloContextView(
+                    state: .empty,
+                    sessions: [],   // TODO: 同上
+                    myRecent: [],
+                    partnerFavs: [],
+                    partnerName: pairViewModel.partnerProfile?.displayName ?? "さくら",
+                    onBack: { showContext = false }
+                )
+            }
+        }
         .task {
             let userId = authViewModel.session?.user.id.uuidString ?? ""
             let name = authViewModel.session?.user.userMetadata["full_name"]?.stringValue
