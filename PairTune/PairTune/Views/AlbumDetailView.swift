@@ -153,8 +153,9 @@ struct AlbumDetailView: View {
             .padding(.horizontal, 32)
 
             VStack(spacing: 5) {
+                // jsx: 22pt 700(bold)
                 Text(viewModel.album.title)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .tracking(0.2)
@@ -212,23 +213,25 @@ struct AlbumDetailView: View {
     }
 
     // MARK: - CTA row
+    //
+    // jsx: primary 56pt height + 15pt 600、secondary 56×56 大きめ正方形(chat6「副ボタン拡大」)
 
     private var ctaRow: some View {
         HStack(spacing: 10) {
             Button {
                 viewModel.playAll()
             } label: {
-                HStack(spacing: 7) {
+                HStack(spacing: 8) {
                     Image(systemName: "play.fill")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                     Text(isSolo ? "ひとりで再生" : "ふたりで再生")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 46)
+                .frame(height: 56)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [.pairtunePrimary, .pairtuneSecondary],
@@ -236,9 +239,9 @@ struct AlbumDetailView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .shadow(color: Color.pairtunePrimary.opacity(0.33), radius: 16, y: 8)
+                        .shadow(color: Color.pairtunePrimary.opacity(0.27), radius: 16, y: 8)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
                         )
                 )
@@ -250,14 +253,14 @@ struct AlbumDetailView: View {
                 showToast("キューに追加しました")
             } label: {
                 Image(systemName: "text.line.first.and.arrowtriangle.forward")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(Color(hex: "A8A8A8"))
-                    .frame(width: 46, height: 46)
+                    .frame(width: 56, height: 56)
                     .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(Color.white.opacity(0.05))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
                             )
                     )
@@ -320,11 +323,13 @@ struct AlbumDetailView: View {
 
 // MARK: - Album track row
 
+// v0.5: 行高 64pt + ♥ マーカー撤去(chat6 §1-11、screens-album-extras.jsx と一致)
+//   - jsx の vertical padding 21px × 2 ≒ 64pt
+//   - partnerFav / youFav の ♥ 表示は廃止(行が混雑するため。お気に入りは別動線で表現)
+
 private struct AlbumTrackRow: View {
     let number: Int
     let track: Track
-    var partnerFav: Bool = false
-    var youFav: Bool = false
     var onMenu: () -> Void
 
     var body: some View {
@@ -335,18 +340,14 @@ private struct AlbumTrackRow: View {
                 .frame(width: 18)
                 .monospacedDigit()
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(track.title)
-                        .font(.system(size: 14.5, weight: .medium))
-                        .foregroundColor(.white)
-                        .tracking(0.1)
-                        .lineLimit(1)
-                    if partnerFav { partnerHeart }
-                    if youFav { youHeart }
-                }
-            }
+            Text(track.title)
+                .font(.system(size: 14.5, weight: .medium))
+                .foregroundColor(.white)
+                .tracking(0.1)
+                .lineLimit(1)
+
             Spacer(minLength: 0)
+
             Text(fmt(track.duration))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundColor(Color(hex: "5A5566"))
@@ -361,31 +362,14 @@ private struct AlbumTrackRow: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 21)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Color.white.opacity(0.04))
                 .frame(height: 0.5)
-                .padding(.leading, 50)
+                .padding(.leading, 46)
         }
         .contentShape(Rectangle())
-    }
-
-    private var partnerHeart: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(Color.pairtuneSecondary.opacity(0.11))
-            Image(systemName: "heart.fill")
-                .font(.system(size: 7))
-                .foregroundColor(.pairtuneSecondary)
-        }
-        .frame(width: 14, height: 14)
-    }
-
-    private var youHeart: some View {
-        Image(systemName: "heart.fill")
-            .font(.system(size: 9))
-            .foregroundColor(.pairtunePrimary)
     }
 }
