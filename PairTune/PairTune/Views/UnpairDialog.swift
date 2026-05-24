@@ -1,28 +1,32 @@
 import SwiftUI
 
-// MARK: - UnpairDialog (v0.4 §2.12 / §8-5-2)
+// MARK: - UnpairDialog (v0.5 Design Handoff §2.12 / 仕様書 §8-5-2)
 //
 // 3 step modal:
-//   1. Confirm   : door-out icon (red) + 「ペアリングを解消しますか?」+ 続ける / キャンセル
-//   2. Memories  : 残す(RECOMMEND) / あとで決める / 完全に削除 の 3 オプション
-//   3. Done      : check icon + 「ペアリングを解消しました」+ 閉じる
+//   1. Confirm   : heart-broken icon (neutral) +「ペアリングを解消しますか?」
+//                 「相手 さんとのルームは閉じられ、以後の同期再生はできなくなります。」
+//                 「次へ」(赤系 secondary) / キャンセル
+//   2. Memories  : タイトルのみ(サブコピーなし) + 3 オプション
+//                 - 残す(おすすめ chip / primary outline)
+//                 - 保留する(90 日後に自動削除)
+//                 - 完全に削除(danger red, door-out icon)
+//                 末尾に「← 戻る」(矢印付き transparent)
+//   3. Done      : check icon(primary) +「ペアリングを解消しました」
+//                 + choice 別動的コピー(下記)
+//                 完了 CTA はニュートラル(gradient なし)
 //
-// 「残す」 → preserveMemories = TRUE(scheduled_deletion_at = NULL、永続保持)
-// 「あとで決める」「完全に削除」 → preserveMemories = FALSE(90 日後に物理削除)
-//   ※ DB レベルではこの 2 つは同じ挙動。文言で意思決定の確度を区別する。
+// 「残す」 → preserveMemories = TRUE / 「保留する」「完全に削除」 → preserveMemories = FALSE
+// DB レベルでは後者 2 つは同じ(90 日後物理削除)。文言で意思決定の確度を区別。
 //
-// 完了 → Home が pre state, Solo は memory state へ移行(active_pair_id が NULL になる)。
+// 完了 → Home が pre state, Solo は memory state へ移行(active_pair_id が NULL)。
 
 enum UnpairChoice {
-    case keep       // 思い出を残す(preserveMemories=true)
-    case later      // あとで決める(preserveMemories=false、90 日後削除、UI から後で変更可)
-    case delete     // 完全に削除(preserveMemories=false、90 日後物理削除)
+    case keep
+    case later
+    case delete
 
     var preserveMemories: Bool {
-        switch self {
-        case .keep: return true
-        case .later, .delete: return false
-        }
+        self == .keep
     }
 }
 
@@ -41,6 +45,7 @@ struct UnpairDialog: View {
     var onDismiss: () -> Void
 
     @State private var step: UnpairStep = .confirm
+    @State private var choice: UnpairChoice? = nil
     @State private var bgOpacity: Double = 0
     @State private var scale: CGFloat = 0.92
     @State private var isCommitting: Bool = false
@@ -50,9 +55,7 @@ struct UnpairDialog: View {
             Color.black.opacity(0.62)
                 .opacity(bgOpacity)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    if step == .confirm { dismiss() }
-                }
+                // タップ無効=明示的キャンセルのみ(handoff §2.12 Dialog 共通)
 
             card
                 .scaleEffect(scale)
@@ -79,9 +82,6 @@ struct UnpairDialog: View {
 
     private var card: some View {
         ZStack {
-            // 各 step を ZStack で重ね、表示されている step だけ opacity=1 にする。
-            // Group での swap だと outgoing が即時に消えて incoming が立ち上がる前に空白が
-            // 出るため、ZStack + opacity でクロスフェードさせて「ちらつき」を防ぐ。
             confirmStep.opacity(step == .confirm ? 1 : 0).allowsHitTesting(step == .confirm)
             memoriesStep.opacity(step == .memories ? 1 : 0).allowsHitTesting(step == .memories)
             doneStep.opacity(step == .done ? 1 : 0).allowsHitTesting(step == .done)
@@ -106,10 +106,10 @@ struct UnpairDialog: View {
 
     private var confirmStep: some View {
         VStack(spacing: 0) {
-            roundIcon(systemName: "door.left.hand.open",
-                      tint: .pairtuneSyncBad,
-                      bg: Color.pairtuneSyncBad.opacity(0.10),
-                      border: Color.pairtuneSyncBad.opacity(0.25))
+            roundIcon(systemName: "heart.slash",
+                      tint: Color(hex: "A8A8A8"),
+                      bg: Color.white.opacity(0.04),
+                      border: Color.white.opacity(0.08))
 
             Text("ペアリングを解消しますか?")
                 .font(.system(size: 17, weight: .semibold))
@@ -129,16 +129,16 @@ struct UnpairDialog: View {
                 Button {
                     step = .memories
                 } label: {
-                    Text("続ける…")
+                    Text("次へ")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.pairtuneSyncBad)
+                        .foregroundColor(.pairtuneSecondary)
                         .frame(maxWidth: .infinity, minHeight: 46)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.pairtuneSyncBad.opacity(0.10))
+                                .fill(Color.pairtuneSecondary.opacity(0.10))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.pairtuneSyncBad.opacity(0.30), lineWidth: 0.5)
+                                        .stroke(Color.pairtuneSecondary.opacity(0.30), lineWidth: 0.5)
                                 )
                         )
                 }
@@ -166,7 +166,7 @@ struct UnpairDialog: View {
 
     private var confirmMessage: String {
         let prefix = partnerName.map { "\($0) さんとの" } ?? "ふたりの"
-        return "\(prefix) shared_room は閉じられ、\n以後の同期再生はできなくなります。"
+        return "\(prefix)ルームは閉じられ、\n以後の同期再生はできなくなります。"
     }
 
     // MARK: - Step 2: Memories
@@ -178,51 +178,44 @@ struct UnpairDialog: View {
                 .foregroundColor(.white)
                 .tracking(0.2)
 
-            Text("ふたりで聴いた曲の履歴を、どうしましょう?")
-                .font(.system(size: 11.5))
-                .foregroundColor(Color(hex: "7A7588"))
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .tracking(0.2)
-                .padding(.top, 6)
-
             VStack(spacing: 8) {
                 memoryOption(
                     choice: .keep,
                     icon: "music.note",
                     title: "残す",
-                    subtitle: "閲覧専用モードで保持",
                     desc: "ふたりで聴いた曲を Solo モードでいつでも見返せます。",
                     recommend: true
                 )
                 memoryOption(
                     choice: .later,
-                    icon: "lock",
-                    title: "あとで決める",
-                    subtitle: "90 日間は保持",
-                    desc: "90 日後に削除します。それまでに変更できます。"
+                    icon: "clock",
+                    title: "保留する",
+                    desc: "それまでに Profile から『残す』に変更できます。"
                 )
                 memoryOption(
                     choice: .delete,
-                    icon: "trash",
+                    icon: "door.left.hand.open",
                     title: "完全に削除",
-                    subtitle: "90 日後に物理削除",
                     desc: "すべての履歴が削除されます。元には戻せません。",
                     danger: true
                 )
             }
-            .padding(.top, 16)
+            .padding(.top, 20)
 
             Button {
                 step = .confirm
             } label: {
-                Text("戻る")
-                    .font(.system(size: 13))
-                    .foregroundColor(Color(hex: "7A7588"))
-                    .frame(maxWidth: .infinity, minHeight: 42)
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("戻る")
+                        .font(.system(size: 13))
+                }
+                .foregroundColor(Color(hex: "7A7588"))
+                .frame(maxWidth: .infinity, minHeight: 42)
             }
             .buttonStyle(.plain)
-            .padding(.top, 6)
+            .padding(.top, 8)
             .disabled(isCommitting)
         }
     }
@@ -231,7 +224,6 @@ struct UnpairDialog: View {
         choice: UnpairChoice,
         icon: String,
         title: String,
-        subtitle: String,
         desc: String,
         recommend: Bool = false,
         danger: Bool = false
@@ -259,19 +251,18 @@ struct UnpairDialog: View {
                         )
                         .frame(width: 32, height: 32)
                     Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(iconTint)
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(title)
                             .font(.system(size: 13.5, weight: .medium))
                             .foregroundColor(.white)
                             .tracking(0.2)
                         if recommend {
-                            Text("RECOMMEND")
-                                .font(.system(size: 8.5, weight: .semibold))
-                                .tracking(0.6)
+                            Text("おすすめ")
+                                .font(.system(size: 10, weight: .semibold))
                                 .foregroundColor(.pairtunePrimary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -285,13 +276,9 @@ struct UnpairDialog: View {
                                 )
                         }
                     }
-                    Text(subtitle)
-                        .font(.system(size: 10.5))
-                        .foregroundColor(danger ? .pairtuneSyncBad : Color(hex: "7A7588"))
-                        .tracking(0.2)
                     Text(desc)
                         .font(.system(size: 10.5))
-                        .foregroundColor(Color(hex: "5A5566"))
+                        .foregroundColor(danger ? Color.pairtuneSyncBad.opacity(0.85) : Color(hex: "7A7588"))
                         .tracking(0.2)
                         .lineSpacing(2)
                         .multilineTextAlignment(.leading)
@@ -316,11 +303,12 @@ struct UnpairDialog: View {
         .disabled(isCommitting)
     }
 
-    private func commit(_ choice: UnpairChoice) {
+    private func commit(_ c: UnpairChoice) {
         guard !isCommitting else { return }
         isCommitting = true
+        choice = c
         Task {
-            let ok = await onCommit(choice)
+            let ok = await onCommit(c)
             isCommitting = false
             if ok { step = .done }
         }
@@ -342,7 +330,7 @@ struct UnpairDialog: View {
                 .tracking(0.2)
                 .padding(.top, 14)
 
-            Text("思い出は Solo モードで閲覧専用に残してあります。\nいつでも、また始められます。")
+            Text(doneMessage)
                 .font(.system(size: 12))
                 .foregroundColor(Color(hex: "A8A8A8"))
                 .multilineTextAlignment(.center)
@@ -356,15 +344,9 @@ struct UnpairDialog: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity, minHeight: 46)
                     .background(
+                        // v0.5: 完了 CTA はニュートラル(gradient なし)
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.pairtunePrimary, .pairtuneSecondary],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .shadow(color: Color.pairtunePrimary.opacity(0.27), radius: 14, y: 6)
+                            .fill(Color.white.opacity(0.04))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                                     .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
@@ -373,6 +355,18 @@ struct UnpairDialog: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 18)
+        }
+    }
+
+    /// choice 別の完了画面コピー(handoff §2.12)
+    private var doneMessage: String {
+        switch choice ?? .later {
+        case .keep:
+            return "思い出は Solo モードで閲覧専用に残してあります。\nMemory Album からいつでも見返せます。\nいつでも、また始められます。"
+        case .later:
+            return "思い出は 90 日間保留されます。\nProfile から『残す』に変更できます。\nいつでも、また始められます。"
+        case .delete:
+            return "思い出は 90 日後に削除されます。\nお互いの履歴もタイムラインも消えます。"
         }
     }
 
