@@ -236,26 +236,32 @@ private struct Section2HorizontalScroll: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // jsx: section label 18pt bold, 22pt leading
             Text(label)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.white)
                 .tracking(0.3)
                 .padding(.leading, 22)
 
-            // 横スクロールは parent 幅で clip させる(はみ出しを防ぐ)
+            // jsx Carousel: gap 10, margin '0 -18px' で edge-to-edge、内側 padding 18
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     ForEach(items) { item in
                         MiniCard(item: item, favorite: favorite) { onSelect(item) }
                     }
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, 18)
             }
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+// jsx MiniCard / FavCard:
+//   - 108×108 アートワーク + 0.5px white06 border + 0 8 22 black45 shadow
+//   - title 11.5pt 500 + artist 10.5pt #7A7588
+//   - FavCard は heart バッジが top-LEFT 6,6 / 18×18 / accent_cc background
 
 private struct MiniCard: View {
     let item: SoloContextTrackCard
@@ -264,35 +270,40 @@ private struct MiniCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
-                ZStack(alignment: .topTrailing) {
-                    RoundedRectangle(cornerRadius: 10)
+            VStack(alignment: .leading, spacing: 7) {
+                ZStack(alignment: .topLeading) {
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(LinearGradient(
                             colors: [item.gradientStart, item.gradientEnd],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         ))
-                        .frame(width: 112, height: 112)
-                        .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                        .frame(width: 108, height: 108)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                        )
+                        .shadow(color: .black.opacity(0.45), radius: 11, y: 8)
 
                     if favorite {
                         Image(systemName: "heart.fill")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                             .foregroundColor(.white)
-                            .frame(width: 22, height: 22)
-                            .background(Circle().fill(Color.black.opacity(0.55)))
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(Color.pairtuneSecondary.opacity(0.8)))
                             .padding(6)
                     }
                 }
                 Text(item.title)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(.white)
+                    .tracking(0.1)
                     .lineLimit(1)
                 Text(item.artist)
-                    .font(.system(size: 11))
-                    .foregroundColor(Color.pairtuneTextSecondary)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(hex: "7A7588"))
                     .lineLimit(1)
             }
-            .frame(width: 112, alignment: .leading)
+            .frame(width: 108, alignment: .leading)
         }
         .buttonStyle(.plain)
     }

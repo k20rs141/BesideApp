@@ -309,10 +309,48 @@ private struct MemoryEntryCard: View {
 struct SharedTimelineView: View {
     let sessions: [ContextSession]
     var onSelectTrack: (ContextSessionTrack) -> Void = { _ in }
+    /// 末尾の「すべての軌跡を見る」リンク(SoloContextView 内では出す、SharedContextView は別ヘッダで対応)
+    var seeAllAction: (() -> Void)? = nil
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // vertical gradient line(2pt 幅、左寄せ x=16 で描画)
+        // 各 SessionNode が dot を絶対配置で描画するので、行ごとに自然と x=17 の線上に dot が乗る。
+        VStack(alignment: .leading, spacing: 0) {
+            // sessions を順に並べる。GeometryReader で全体高を取って線を後ろに重ねる方式は複雑になるので、
+            // 「各 SessionNode が左 padding 46pt の領域内で dot + 縦線セグメントを自前で描く」設計に統一。
+            ForEach(sessions) { s in
+                switch s.kind {
+                case .monthMark:
+                    TimelineMonthMark(label: s.label)
+                case .session:
+                    SessionNode(session: s, onTrack: onSelectTrack)
+                }
+            }
+
+            // 「この先にもっと、ふたりの時間が。」フッター + (Solo の場合のみ)「すべての軌跡を見る」
+            VStack(alignment: .leading, spacing: 6) {
+                Text("この先にもっと、ふたりの時間が。")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(hex: "5A5566"))
+                    .tracking(0.2)
+                if let seeAllAction {
+                    Button(action: seeAllAction) {
+                        HStack(spacing: 3) {
+                            Text("すべての軌跡を見る")
+                                .font(.system(size: 12, weight: .medium))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                        }
+                        .foregroundColor(.pairtunePrimary)
+                    }
+                }
+            }
+            .padding(.leading, 46)
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(alignment: .topLeading) {
+            // jsx の「縦のグラデ線」は absolute(left:16, top:18, bottom:14, width:2)。
+            // 全体高に対して描画する必要があるので background overlay として配置。
             LinearGradient(
                 colors: [
                     Color.pairtunePrimary,
@@ -323,27 +361,10 @@ struct SharedTimelineView: View {
                 startPoint: .top, endPoint: .bottom
             )
             .frame(width: 2)
-            .offset(x: 16, y: 18)
+            .padding(.top, 18)
             .padding(.bottom, 14)
-
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(sessions) { s in
-                    switch s.kind {
-                    case .monthMark:
-                        MonthMark(label: s.label)
-                    case .session:
-                        SessionNode(session: s, onTrack: onSelectTrack)
-                    }
-                }
-                Text("この先にもっと、ふたりの時間が。")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(hex: "5A5566"))
-                    .padding(.leading, 46)
-                    .padding(.top, 4)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .offset(x: 16)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -352,54 +373,30 @@ private struct SessionNode: View {
     var onTrack: (ContextSessionTrack) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            ZStack {
-                Circle()
-                    .fill(
-                        session.special
-                            ? AnyShapeStyle(LinearGradient(
-                                colors: [Color.pairtunePrimary, Color.pairtuneSecondary],
-                                startPoint: .topLeading, endPoint: .bottomTrailing
-                            ))
-                            : AnyShapeStyle(Color.pairtunePrimary)
-                    )
-                    .frame(width: session.special ? 14 : 12, height: session.special ? 14 : 12)
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                session.special
-                                    ? Color.pairtuneSecondary.opacity(0.18)
-                                    : Color.pairtunePrimary.opacity(0.2),
-                                lineWidth: 4
-                            )
-                    )
-                    .shadow(
-                        color: session.special
-                            ? Color.pairtunePrimary.opacity(0.7)
-                            : Color.pairtunePrimary.opacity(0.7),
-                        radius: 8
-                    )
-            }
-            .frame(width: 32, alignment: .leading)
-            .padding(.leading, 4)
-            .padding(.top, 4)
-
+        // jsx: paddingLeft:46 paddingBottom:22 の relative コンテナ + 絶対配置の dot
+        ZStack(alignment: .topLeading) {
+            // 内容(左から 46pt の余白で line と dot を避ける)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(session.icon).font(.system(size: 16))
                     Text(session.label)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
+                        .tracking(0.2)
                 }
                 Text("\(session.count) 曲 · \(session.durationLabel)")
                     .font(.system(size: 11))
                     .foregroundColor(Color(hex: "7A7588"))
+                    .tracking(0.15)
                     .padding(.top, 3)
 
                 if let story = session.story {
+                    // jsx: padding 9px 12px, bg primary14, borderLeft 2px primary73, borderRadius '0 8 8 0'
                     Text(story)
                         .font(.system(size: 12))
                         .foregroundColor(Color(hex: "C9C2DD"))
+                        .tracking(0.2)
+                        .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
@@ -411,7 +408,13 @@ private struct SessionNode: View {
                                     .frame(width: 2)
                                 Color.pairtunePrimary.opacity(0.08)
                             }
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(UnevenRoundedRectangle(
+                                topLeadingRadius: 0,
+                                bottomLeadingRadius: 0,
+                                bottomTrailingRadius: 8,
+                                topTrailingRadius: 8,
+                                style: .continuous
+                            ))
                         )
                         .padding(.top, 8)
                 }
@@ -426,6 +429,12 @@ private struct SessionNode: View {
                                         startPoint: .topLeading, endPoint: .bottomTrailing
                                     ))
                                     .frame(width: 44, height: 44)
+                                    // jsx: inset 0 0 0 0.5px rgba(255,255,255,0.06)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .inset(by: 0.25)
+                                            .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                                    )
                                     .shadow(color: .black.opacity(0.4), radius: 6, y: 4)
                             }
                             .buttonStyle(.plain)
@@ -450,31 +459,67 @@ private struct SessionNode: View {
                     .padding(.top, 10)
                 }
             }
-            .padding(.leading, 8)
+            .padding(.leading, 46)
             .padding(.bottom, 22)
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            // 絶対配置の dot(line の中心 x=17 に合わせる)
+            sessionDot
         }
+    }
+
+    @ViewBuilder
+    private var sessionDot: some View {
+        let size: CGFloat = session.special ? 14 : 12
+        let xOffset: CGFloat = session.special ? 10 : 11   // line center x=17, dot left = 17 - size/2
+        let yOffset: CGFloat = session.special ? 5 : 6
+
+        Circle()
+            .fill(
+                session.special
+                    ? AnyShapeStyle(LinearGradient(
+                        colors: [Color.pairtunePrimary, Color.pairtuneSecondary],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    ))
+                    : AnyShapeStyle(Color.pairtunePrimary)
+            )
+            .frame(width: size, height: size)
+            .overlay(
+                // jsx: box-shadow `0 0 0 4px ${secondary or primary}_2e/33` を halo ring で表現
+                Circle()
+                    .stroke(
+                        session.special
+                            ? Color.pairtuneSecondary.opacity(0.18)
+                            : Color.pairtunePrimary.opacity(0.2),
+                        lineWidth: 4
+                    )
+            )
+            .shadow(color: Color.pairtunePrimary.opacity(0.7), radius: session.special ? 10 : 7)
+            .offset(x: xOffset, y: yOffset)
     }
 }
 
-private struct MonthMark: View {
+private struct TimelineMonthMark: View {
     let label: String
 
     var body: some View {
-        HStack(spacing: 0) {
+        ZStack(alignment: .topLeading) {
+            // 短いマーカー線(jsx: left:11 top:8 width:12 height:2 background primary_66)
             Rectangle()
                 .fill(Color.pairtunePrimary.opacity(0.4))
                 .frame(width: 12, height: 2)
-                .padding(.leading, 11)
+                .offset(x: 11, y: 8)
+
             Text(label)
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(1.2)
                 .textCase(.uppercase)
                 .foregroundColor(Color(hex: "7A7588"))
-                .padding(.leading, 23)
-            Spacer(minLength: 0)
+                .padding(.leading, 46)
         }
-        .padding(.vertical, 8)
+        .padding(.top, 2)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
