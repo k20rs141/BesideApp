@@ -490,10 +490,7 @@ struct ProfileView: View {
             )
             .onChange(of: sharePlayHistory) { _, newValue in
                 Task {
-                    await authViewModel.updatePrivacySettings(
-                        sharePlayHistory: newValue,
-                        shareFavorites: true   // 互換のため true 固定で送る(DB カラムは 0011 で削除済み)
-                    )
+                    await authViewModel.updatePrivacySettings(sharePlayHistory: newValue)
                 }
             }
         }

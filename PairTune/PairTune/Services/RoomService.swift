@@ -151,24 +151,23 @@ final class RoomService {
             .execute()
     }
 
-    /// プライバシー設定を保存する(M6: share_play_history / share_favorites)。
-    func updatePrivacySettings(sharePlayHistory: Bool, shareFavorites: Bool) async throws {
+    /// プライバシー設定を保存する。
+    /// v0.5: share_favorites は migration 0011 で DROP 済みのため、share_play_history のみを更新する。
+    func updatePrivacySettings(sharePlayHistory: Bool) async throws {
         guard let userId = try? await client.auth.session.user.id else {
             throw RoomError.notAuthenticated
         }
 
         struct PrivacyUpdate: Encodable {
             let sharePlayHistory: Bool
-            let shareFavorites: Bool
             enum CodingKeys: String, CodingKey {
                 case sharePlayHistory = "share_play_history"
-                case shareFavorites   = "share_favorites"
             }
         }
 
         try await client
             .from("profiles")
-            .update(PrivacyUpdate(sharePlayHistory: sharePlayHistory, shareFavorites: shareFavorites))
+            .update(PrivacyUpdate(sharePlayHistory: sharePlayHistory))
             .eq("id", value: userId.uuidString)
             .execute()
     }

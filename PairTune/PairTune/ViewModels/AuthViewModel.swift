@@ -89,17 +89,14 @@ final class AuthViewModel: NSObject {
         controller.performRequests()
     }
 
-    // MARK: - Privacy settings (M6)
+    // MARK: - Privacy settings
 
-    /// share_play_history / share_favorites を更新し、ローカルの currentProfile にも反映する。
-    func updatePrivacySettings(sharePlayHistory: Bool, shareFavorites: Bool) async {
+    /// share_play_history を更新し、ローカルの currentProfile にも反映する。
+    /// v0.5: share_favorites は migration 0011 で DROP 済みのため対象外。
+    func updatePrivacySettings(sharePlayHistory: Bool) async {
         do {
-            try await roomService.updatePrivacySettings(
-                sharePlayHistory: sharePlayHistory,
-                shareFavorites: shareFavorites
-            )
+            try await roomService.updatePrivacySettings(sharePlayHistory: sharePlayHistory)
             currentProfile?.sharePlayHistory = sharePlayHistory
-            currentProfile?.shareFavorites = shareFavorites
         } catch {
             print("[AuthViewModel] updatePrivacySettings error:", error)
             lastError = "設定の保存に失敗しました"

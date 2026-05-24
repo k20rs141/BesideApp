@@ -163,8 +163,7 @@ struct ProfileV4: Codable, Identifiable {
     // ── 共有設定(opt-in)──
     /// マイルーム再生履歴をパートナーに見せるか(default: false)
     var sharePlayHistory: Bool
-    /// お気に入り曲をパートナーに見せるか(default: true)
-    var shareFavorites: Bool
+    // v0.5: share_favorites は廃止(♡ は常に共有)。migration 0011 でカラム自体を DROP 済み。
 
     // ── 通知設定 ──
     /// 相手オンライン通知(default: false)
@@ -184,7 +183,6 @@ struct ProfileV4: Codable, Identifiable {
         case activePairId = "active_pair_id"
         case myRoomId = "my_room_id"
         case sharePlayHistory = "share_play_history"
-        case shareFavorites = "share_favorites"
         case notifyPartnerOnline = "notify_partner_online"
         case notifyMilestones = "notify_milestones"
         case createdAt = "created_at"
