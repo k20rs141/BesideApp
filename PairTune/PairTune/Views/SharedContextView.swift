@@ -81,7 +81,19 @@ struct SharedContextView: View {
     var body: some View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
-            ambientGlow
+
+            // ambient glow を Color.clear.overlay でラップし、layout box を引き伸ばさない
+            Color.clear
+                .overlay {
+                    Ellipse()
+                        .fill(Color.pairtunePrimary.opacity(0.15))
+                        .frame(width: 600, height: 380)
+                        .blur(radius: 60)
+                        .offset(y: -240)
+                        .allowsHitTesting(false)
+                }
+                .clipped()
+                .ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
@@ -126,15 +138,7 @@ struct SharedContextView: View {
             }
             .clipped()
         }
-    }
-
-    private var ambientGlow: some View {
-        Ellipse()
-            .fill(Color.pairtunePrimary.opacity(0.15))
-            .frame(width: 600, height: 380)
-            .blur(radius: 60)
-            .offset(y: -240)
-            .allowsHitTesting(false)
+        .clipped()
     }
 }
 

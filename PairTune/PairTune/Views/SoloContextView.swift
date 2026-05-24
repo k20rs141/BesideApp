@@ -50,7 +50,21 @@ struct SoloContextView: View {
     var body: some View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
-            ambientGlow
+
+            // ambient glow は Color.clear に overlay することで、layout box に対し
+            // 「飾り(常に親サイズ)」として扱う。直接 ZStack の子にすると frame(600)
+            // が ZStack の幅を引き上げて右端がはみ出す事故が起きる。
+            Color.clear
+                .overlay {
+                    Ellipse()
+                        .fill(Color.pairtunePrimary.opacity((state == .memory || state == .deleted) ? 0.09 : 0.15))
+                        .frame(width: 600, height: 380)
+                        .blur(radius: 60)
+                        .offset(y: -240)
+                        .allowsHitTesting(false)
+                }
+                .clipped()
+                .ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
@@ -125,15 +139,7 @@ struct SoloContextView: View {
             }
             .clipped()
         }
-    }
-
-    private var ambientGlow: some View {
-        Ellipse()
-            .fill(Color.pairtunePrimary.opacity((state == .memory || state == .deleted) ? 0.09 : 0.15))
-            .frame(width: 600, height: 380)
-            .blur(radius: 60)
-            .offset(y: -240)
-            .allowsHitTesting(false)
+        .clipped()
     }
 }
 

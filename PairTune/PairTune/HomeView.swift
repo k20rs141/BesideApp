@@ -167,22 +167,18 @@ struct HomeView: View {
     private func pairedHero(partnerName: String) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 20) {
-                RemoteAvatarView(
+                AvatarWithStatusDot(
                     url: myAvatarUrl.flatMap(URL.init(string:)),
                     initials: initialOf(myName ?? "YO"),
                     color: .pairtunePrimary,
-                    size: 62,
-                    strokeColor: Color.white.opacity(0.08),
-                    strokeWidth: 1.5,
+                    online: true,
                     dim: false
                 )
-                RemoteAvatarView(
+                AvatarWithStatusDot(
                     url: partnerAvatarUrl.flatMap(URL.init(string:)),
                     initials: initialOf(partnerName),
                     color: Color(hex: "FF6B9D"),
-                    size: 62,
-                    strokeColor: Color.white.opacity(0.08),
-                    strokeWidth: 1.5,
+                    online: partnerOnline,
                     dim: !partnerOnline
                 )
             }
@@ -412,34 +408,84 @@ struct HomeView: View {
 }
 
 // MARK: - Anniversary badge
+// jsx 仕様: padding '4px 10px 4px 8px', borderRadius 999, background
+// `linear-gradient(135deg, accent24, accent2_24)`, border 0.5px accent40,
+// sparkle 11pt + label 10.5pt fontWeight 500 letterSpacing .3
 
 private struct AnniversaryBadge: View {
+    var label: String = "1ヶ月記念"
+
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 10))
-            Text("1ヶ月")
-                .font(.system(size: 10.5, weight: .semibold))
+        HStack(spacing: 5) {
+            Text("✨")
+                .font(.system(size: 11))
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium))
+                .tracking(0.3)
         }
         .foregroundColor(.white)
-        .padding(.horizontal, 9)
+        .padding(.leading, 8)
+        .padding(.trailing, 10)
         .padding(.vertical, 4)
         .background(
             Capsule()
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.pairtunePrimary.opacity(0.27),
-                            Color.pairtuneSecondary.opacity(0.21),
+                            Color.pairtunePrimary.opacity(0.14),
+                            Color.pairtuneSecondary.opacity(0.14),
                         ],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    Capsule().stroke(Color.white.opacity(0.14), lineWidth: 0.5)
+                    Capsule().stroke(Color.pairtunePrimary.opacity(0.25), lineWidth: 0.5)
                 )
         )
+    }
+}
+
+// MARK: - AvatarWithStatusDot
+//
+// jsx PartnerAvatar 相当。RemoteAvatarView の上に bottom-right の
+// オンライン/オフラインドットを重ねる。
+//   - dot size = avatarSize * 0.27
+//   - online: #7BD389 + 0 0 8px の glow
+//   - offline: #3F3F4A
+//   - 2px ベース色ボーダー(背景に溶け込ませる)
+
+private struct AvatarWithStatusDot: View {
+    let url: URL?
+    let initials: String
+    let color: Color
+    var size: CGFloat = 62
+    let online: Bool
+    let dim: Bool
+
+    private var dotSize: CGFloat { size * 0.27 }
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            RemoteAvatarView(
+                url: url,
+                initials: initials,
+                color: color,
+                size: size,
+                strokeColor: Color.white.opacity(0.08),
+                strokeWidth: 1.5,
+                dim: dim
+            )
+
+            Circle()
+                .fill(online ? Color.pairtuneSyncOk : Color(hex: "3F3F4A"))
+                .frame(width: dotSize, height: dotSize)
+                .overlay(
+                    Circle().stroke(Color.pairtuneBase, lineWidth: 2)
+                )
+                .shadow(color: online ? Color.pairtuneSyncOk.opacity(0.6) : .clear, radius: 4)
+                .offset(x: 1, y: 1)
+        }
     }
 }
 
