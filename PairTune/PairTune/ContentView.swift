@@ -441,6 +441,11 @@ private struct RoomViewWrapper: View {
     /// v0.5: Room から push される文脈画面の表示状態
     @State private var showContext: Bool = false
 
+    /// v1.1: ふたりのプレイリスト(★ ボタン INSERT 用にここで保持)
+    @State private var pairPlaylistService = PairPlaylistService()
+    @State private var pairPlaylist: PairPlaylist? = nil
+    @State private var pairPlaylistItems: [PairPlaylistItem] = []
+
     /// Solo Context の状態判定。pair あり = full / empty、pair なし = deleted。
     /// memory(preserve_memories=TRUE で ended)は将来追加(pair_relationships の status を見るため別途取得が必要)。
     private var soloContextState: SoloContextState {
@@ -465,6 +470,36 @@ private struct RoomViewWrapper: View {
         let h = m / 60
         let rem = m % 60
         return rem == 0 ? "\(h) 時間" : "\(h) 時間 \(rem) 分"
+    }
+
+    /// 現在再生中の曲を「ふたりのプレイリスト」に追加する(★ ボタン)
+    private func saveCurrentToPlaylist() async {
+        guard let pair = pairViewModel.activePair,
+              let track = roomViewModel.currentTrack,
+              let userId = authViewModel.session?.user.id.uuidString
+        else { return }
+
+        let playlist: PairPlaylist?
+        if let cached = pairPlaylist {
+            playlist = cached
+        } else {
+            playlist = await pairPlaylistService.fetchOrCreatePlaylist(pairId: pair.id)
+        }
+        guard let resolved = playlist else { return }
+
+        let ok = await pairPlaylistService.addItem(
+            playlistId: resolved.id,
+            songId: track.id,
+            songTitle: track.title,
+            artistName: track.artist,
+            artworkUrl: track.artworkURL?.absoluteString,
+            addedBy: userId
+        )
+
+        if ok {
+            pairPlaylistItems = await pairPlaylistService.fetchItems(playlistId: resolved.id)
+            if pairPlaylist == nil { pairPlaylist = resolved }
+        }
     }
 
     var body: some View {
@@ -492,16 +527,27 @@ private struct RoomViewWrapper: View {
                 }
             },
             onSaveToPlaylist: roomViewModel.mode == .shared ? {
-                // v1.1: ふたりのプレイリストに現在曲を追加。
-                // 実 DB 連携(pair_playlists / pair_playlist_items への INSERT)は別途 ViewModel/Service で実装する。
-                // ここではトーストだけが先行表示される(RoomView 側)。
+                Task { await saveCurrentToPlaylist() }
             } : nil
         )
+        .task {
+            // Shared モードに入った時に、ペアのデフォルトプレイリストを取得しておく(★ ボタン用)
+            guard roomViewModel.mode == .shared, let pairId = pairViewModel.activePair?.id else { return }
+            if pairPlaylist == nil {
+                pairPlaylist = await pairPlaylistService.fetchOrCreatePlaylist(pairId: pairId)
+            }
+            if let pid = pairPlaylist?.id {
+                pairPlaylistItems = await pairPlaylistService.fetchItems(playlistId: pid)
+            }
+        }
         .fullScreenCover(isPresented: $showContext) {
             if roomViewModel.mode == .shared {
                 SharedContextView(
                     sessions: ContextSessionGrouping.sessions(from: soloHistoryVM.sharedHistory),
-                    pairPlaylist: [],   // v1.1: PairPlaylistService 経由でロード予定
+                    pairPlaylist: pairPlaylistItems.map { $0.toViewTrack(
+                        myUserId: authViewModel.session?.user.id.uuidString ?? "",
+                        partnerName: pairViewModel.partnerProfile?.displayName
+                    ) },
                     totalDays: daysSincePair(),
                     totalSongs: soloHistoryVM.sharedHistory.count,
                     totalDurationLabel: totalDurationLabel(soloHistoryVM.sharedHistory),
