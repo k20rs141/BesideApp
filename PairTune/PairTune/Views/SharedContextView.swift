@@ -121,8 +121,10 @@ struct SharedContextView: View {
                     }
                     .padding(.horizontal, 18)
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.bottom, 60)
             }
+            .clipped()
         }
     }
 
@@ -306,7 +308,7 @@ struct SharedTimelineView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // vertical gradient line
+            // vertical gradient line(2pt 幅、左寄せ x=16 で描画)
             LinearGradient(
                 colors: [
                     Color.pairtunePrimary,
@@ -335,7 +337,9 @@ struct SharedTimelineView: View {
                     .padding(.leading, 46)
                     .padding(.top, 4)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -392,8 +396,10 @@ private struct SessionNode: View {
                     Text(story)
                         .font(.system(size: 12))
                         .foregroundColor(Color(hex: "C9C2DD"))
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             HStack(spacing: 0) {
                                 Rectangle()
@@ -435,13 +441,14 @@ private struct SessionNode: View {
                                         )
                                 )
                         }
+                        Spacer(minLength: 0)
                     }
                     .padding(.top, 10)
                 }
             }
             .padding(.leading, 8)
             .padding(.bottom, 22)
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

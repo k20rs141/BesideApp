@@ -99,6 +99,7 @@ struct SoloContextView: View {
                                     .saturation(state == .memory ? 0.5 : 1.0)
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 18)
                     }
 
@@ -119,8 +120,10 @@ struct SoloContextView: View {
                         )
                     }
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.bottom, 60)
             }
+            .clipped()
         }
     }
 
@@ -233,6 +236,7 @@ private struct Section2HorizontalScroll: View {
                 .tracking(0.3)
                 .padding(.leading, 22)
 
+            // 横スクロールは parent 幅で clip させる(はみ出しを防ぐ)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(items) { item in
@@ -241,7 +245,9 @@ private struct Section2HorizontalScroll: View {
                 }
                 .padding(.horizontal, 22)
             }
+            .frame(maxWidth: .infinity)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
