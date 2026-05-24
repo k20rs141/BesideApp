@@ -188,6 +188,17 @@ final class PairViewModel {
 
     private func refreshPendingIncoming() async {
         guard let meId else { return }
+
+        // 承認直後の Celebration モード表示中は refresh を抑制する。
+        // accept_pair_request RPC が pair_requests.status を 'pending' → 'accepted' に変えると、
+        // postgres_changes の UPDATE イベントがほぼ即時で飛び、ここに着く。
+        // 何も対策しないと:
+        //   1. acceptIncoming() が showingCelebration = true をセット
+        //   2. ↑直後に UPDATE イベント → ここで pendingRequest = nil(status=pending で取得 0 件)
+        //   3. sheet(item: pendingRequest) は nil で閉じてしまい、Celebration UI が一瞬も出ない
+        // → finishCelebration() が呼ばれるまで refresh をスキップして celebration sheet を保つ。
+        if showingCelebration { return }
+
         do {
             let req = try await pairService.fetchPendingIncomingRequest(userId: meId)
             let deferred = loadDeferredIds()
@@ -274,6 +285,8 @@ final class PairViewModel {
             try await pairService.rejectRequest(req.id)
             pendingRequest = nil
             pendingRequester = nil
+            // 防御: celebrating フラグの取り残しを潰す(reject 経路から来ても安全に)
+            showingCelebration = false
         } catch {
             print("[PairViewModel] reject error:", error)
         }
@@ -289,6 +302,8 @@ final class PairViewModel {
         }
         pendingRequest = nil
         pendingRequester = nil
+        // 防御: 「あとで」で閉じた後に celebrating の取り残しが残らないように
+        showingCelebration = false
     }
 
     // MARK: - Deferred request (in-memory only)
