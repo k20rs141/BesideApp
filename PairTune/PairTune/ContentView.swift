@@ -1,14 +1,24 @@
 import SwiftUI
+import SwiftData
 import Supabase
 import MusicKit
 
 struct ContentView: View {
     @Environment(AuthViewModel.self) private var authViewModel
 
+    // v0.5: オンボーディング完了フラグ (SwiftData)
+    // 未完了の間は OnboardingView を表示し、Home/その他には進ませない。
+    @Query private var appStates: [AppState]
+    @Environment(\.modelContext) private var modelContext
+
     @State private var showCodeEntry: Bool = false
     @State private var showSettings: Bool = false
     @State private var showSoloMode: Bool = false
     @State private var showPairWaiting: Bool = false
+
+    // v0.5.1 §5.8: Connect Music ゲートウェイ
+    // Home から Room へ進む直前に MusicKit 認可 + サブスク状態を確認する
+    @State private var connectGate: ConnectGate? = nil
 
     @State private var homeViewModel = HomeViewModel()
     @State private var pairViewModel = PairViewModel()
@@ -36,12 +46,24 @@ struct ContentView: View {
                     Task { await authViewModel.signInWithApple() }
                 }
                 .transition(.opacity)
+            } else if !onboardingCompleted {
+                // v0.5 §5.0: サインイン直後 / 初回のみ表示
+                OnboardingView(
+                    myPairingCode: authViewModel.pairingCode,
+                    onJoinWithCode: { showCodeEntry = true },
+                    onSolo: {
+                        // 「まず自分で見てみる」: Home に着地。次の Solo ボタンタップで Solo Room へ進める。
+                    },
+                    onSkip: {}
+                )
+                .transition(.opacity)
             } else {
                 authenticatedView
                     .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: authViewModel.session == nil)
+        .animation(.easeInOut(duration: 0.3), value: onboardingCompleted)
         .onChange(of: scenePhase) { _, newPhase in
             // フォアグラウンド復帰時に申請の最新状態を取り直す。Realtime 購読が
             // バックグラウンド中に切れていても、ここで pendingRequest が拾われて
@@ -111,6 +133,20 @@ struct ContentView: View {
                 }
             )
         }
+        // v0.5.1 §5.8: Connect Music ゲートウェイ
+        .fullScreenCover(item: $connectGate) { gate in
+            ConnectMusicView(
+                state: gate.state,
+                intent: gate.intent,
+                onReady: {
+                    connectGate = nil
+                    gate.proceed()
+                },
+                onLater: {
+                    connectGate = nil
+                }
+            )
+        }
     }
 
     // MARK: - Authenticated root
@@ -135,33 +171,40 @@ struct ContentView: View {
                     onShareCode: {},
                     onJoin: { showCodeEntry = true },
                     onListenWithPartner: {
-                        Task {
-                            guard let pair = pairViewModel.activePair else { return }
-                            await homeViewModel.loadSharedRoom(roomId: pair.sharedRoomId)
-                            guard let sharedRoom = homeViewModel.sharedRoom else { return }
-                            roomViewModel = RoomViewModel(sharedRoomV4: sharedRoom, pairId: pair.id)
+                        gateThenRun(intent: .shared) {
+                            Task {
+                                guard let pair = pairViewModel.activePair else { return }
+                                await homeViewModel.loadSharedRoom(roomId: pair.sharedRoomId)
+                                guard let sharedRoom = homeViewModel.sharedRoom else { return }
+                                roomViewModel = RoomViewModel(sharedRoomV4: sharedRoom, pairId: pair.id)
+                            }
                         }
                     },
                     onSolo: {
-                        showSoloMode = true
-                        Task {
-                            let userId = authViewModel.session?.user.id.uuidString ?? ""
-                            let partnerId = pairViewModel.activePair?.partnerUserId(meId: userId.lowercased())
-                            await soloHistoryVM.load(
-                                pairId: pairViewModel.activePair?.id,
-                                userId: userId,
-                                partnerUserId: partnerId
-                            )
+                        gateThenRun(intent: .solo) {
+                            showSoloMode = true
+                            Task {
+                                let userId = authViewModel.session?.user.id.uuidString ?? ""
+                                let partnerId = pairViewModel.activePair?.partnerUserId(meId: userId.lowercased())
+                                await soloHistoryVM.load(
+                                    pairId: pairViewModel.activePair?.id,
+                                    userId: userId,
+                                    partnerUserId: partnerId
+                                )
+                            }
                         }
                     },
                     onProfile: { showSettings = true },
                     onOpenAndWait: {
-                        // オフライン状態でも部屋に入って待機(現状はオンライン時と同じ動作)
-                        Task {
-                            guard let pair = pairViewModel.activePair else { return }
-                            await homeViewModel.loadSharedRoom(roomId: pair.sharedRoomId)
-                            guard let sharedRoom = homeViewModel.sharedRoom else { return }
-                            roomViewModel = RoomViewModel(sharedRoomV4: sharedRoom, pairId: pair.id)
+                        // v0.5: Home 2 状態化により onOpenAndWait は onListenWithPartner と等価。
+                        // オフラインでも shared_room に入り、相手が来たら Presence で自動合流。
+                        gateThenRun(intent: .shared) {
+                            Task {
+                                guard let pair = pairViewModel.activePair else { return }
+                                await homeViewModel.loadSharedRoom(roomId: pair.sharedRoomId)
+                                guard let sharedRoom = homeViewModel.sharedRoom else { return }
+                                roomViewModel = RoomViewModel(sharedRoomV4: sharedRoom, pairId: pair.id)
+                            }
                         }
                     }
                 )
@@ -357,6 +400,43 @@ private struct PairSendAlert: Identifiable {
     let id = UUID()
     let title: String
     let message: String
+}
+
+// MARK: - Connect Music gate (v0.5.1 §5.8)
+
+/// Room に入る直前に提示する音楽サービス接続ゲート。
+/// state は MusicKit 認可 + サブスク状態から導出する。
+struct ConnectGate: Identifiable {
+    let id = UUID()
+    let state: ConnectMusicState
+    let intent: ConnectMusicIntent
+    let proceed: () -> Void
+}
+
+extension ContentView {
+    /// オンボーディング完了したか
+    fileprivate var onboardingCompleted: Bool {
+        appStates.first?.onboardingCompleted ?? false
+    }
+
+    /// Room 起動前に Connect Music ゲートを挟む。
+    /// 認可済 + サブスク有なら即時 run、それ以外は ConnectMusicView を提示する。
+    fileprivate func gateThenRun(intent: ConnectMusicIntent, run: @escaping () -> Void) {
+        let authStatus = MusicAuthorization.currentStatus
+        switch authStatus {
+        case .authorized:
+            // サブスクは MusicSubscription で取得すれば厳密だが、ここでは認可済なら通す。
+            // MusicPlayerService 側で再生時に subscription エラーになれば既存の Alert で
+            // 対処されるので、ゲートとしては「認可されていれば素通り」で OK。
+            run()
+        case .notDetermined:
+            connectGate = ConnectGate(state: .notDetermined, intent: intent, proceed: run)
+        case .denied, .restricted:
+            connectGate = ConnectGate(state: .denied, intent: intent, proceed: run)
+        @unknown default:
+            connectGate = ConnectGate(state: .notDetermined, intent: intent, proceed: run)
+        }
+    }
 }
 
 // MARK: - RoomView Wrapper
