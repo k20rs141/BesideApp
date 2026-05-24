@@ -1,21 +1,29 @@
 import SwiftUI
 import Combine
 
-// MARK: - PairWaitingView (v0.4 ペアリング申請待ち / A 側)
+// MARK: - PairWaitingView (v0.5 §5.6 / A 側 申請待ち)
 //
-// 仕様: docs/PairTune_Specification_v0.4.md §5.6 / §6
-// デザイン: Claude Design v2 `screens-pair-flow.jsx` PairWaitingScreen
+// 仕様: docs/PairTune_Specification_v0.5.md §5.6
+// デザイン: docs/design_v3_source/screens-pair-flow.jsx PairWaitingScreen
 //
-// コード入力 → 申請送信 (`pairViewModel.sendState == .waiting`) の間表示される画面。
-// 左に自分のアバター(active, glow + 3 重リップル)、右に相手のアバター(dim + dashed border)、
-// 中央にダッシュ波線で「申請中」を表現する。
-// 24h カウントダウンは `outgoingRequest.expiresAt` ベースで計算。
-// 相手の承認で `activePair` が立つと自動的に閉じる(ContentView 側で制御)。
+// コード入力 → 申請送信(`pairViewModel.sendState == .waiting`)の間表示される画面。
+// レイアウト:
+//   - Header: 「閉じる」(左) / 「申請中」(中央) / 空(右)
+//   - Hero(上半分): 自分アバター(リップル波 3 重)+ gap 80 + 相手アバター(dim + dashed)
+//                   + 「相手 さんの承認を\n待っています」21pt 500 中央
+//   - Bottom group(footer 寄り): expiry card(縦積み: "有効期限まで" / HH:MM:SS / 説明)
+//                                  + 「このまま閉じても大丈夫です…」ヒント
+//   - Footer: 「申請を取り消す」(secondary red 50pt)
+//
+// 24h カウントダウンは outgoingRequest.expiresAt ベースで計算。
+// jsx は接続波線を avatar 間に置かない設計に変わったため Canvas wave は撤去。
 
 struct PairWaitingView: View {
     let targetCode: String?
     let expiresAt: Date?
     let myInitial: String
+    /// 相手の表示名(不明なら nil 'or "相手"' として generic 表記)
+    var partnerName: String? = nil
 
     var onCancel: () -> Void
     var onClose: () -> Void
@@ -27,14 +35,14 @@ struct PairWaitingView: View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
 
-            // Ambient glow — clipped
+            // ambient glow(jsx: top -15%, primary26, blur 60)
             Color.clear
                 .overlay(alignment: .top) {
                     Circle()
                         .fill(Color.pairtunePrimary.opacity(0.15))
                         .frame(width: 480, height: 480)
                         .blur(radius: 60)
-                        .offset(y: -240)
+                        .offset(y: -200)
                 }
                 .clipped()
                 .ignoresSafeArea()
@@ -42,12 +50,13 @@ struct PairWaitingView: View {
 
             VStack(spacing: 0) {
                 header
-                Spacer(minLength: 0)
                 heroBlock
-                Spacer(minLength: 0)
-                footerButtons
+                bottomBlock
+                footerButton
             }
+            .frame(maxWidth: .infinity)
         }
+        .clipped()
         .onReceive(timer) { now = $0 }
     }
 
@@ -56,51 +65,55 @@ struct PairWaitingView: View {
     private var header: some View {
         HStack {
             Button(action: onClose) {
-                Text("キャンセル")
+                Text("閉じる")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(Color(hex: "A8A8A8"))
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 6)
+                    .padding(6)
             }
-
             Spacer()
-
-            Text("申請中 · PENDING")
-                .font(.system(size: 12))
-                .foregroundColor(Color(hex: "7A7588"))
+            Text("申請中")
+                .font(.system(size: 18))
                 .tracking(0.5)
-
+                .foregroundColor(Color(hex: "7A7588"))
             Spacer()
-
-            Color.clear.frame(width: 60, height: 1)
+            Color.clear.frame(width: 50, height: 1)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.top, 18)
     }
 
-    // MARK: - Hero block
+    // MARK: - Hero block(上半分中央)
 
     private var heroBlock: some View {
         VStack(spacing: 0) {
-            avatarsRow
-                .frame(height: 130)
+            Spacer(minLength: 0)
 
-            VStack(spacing: 8) {
-                Text("相手の承認を\n待っています")
-                    .font(.system(size: 21, weight: .medium))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(6)
-                    .tracking(0.2)
-                Text("相手の承認を待っています")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "7A7588"))
-                    .tracking(0.3)
+            // 2 アバターと waiting コピー
+            HStack(spacing: 80) {
+                meAvatarWithRipples
+                partnerAvatarDim
             }
-            .padding(.top, 24)
+            .frame(height: 110)
 
-            countdownCard
-                .padding(.top, 26)
+            Text("\(partnerName ?? "相手") さんの承認を\n待っています")
+                .font(.system(size: 21, weight: .medium))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineSpacing(6)
+                .tracking(0.2)
+                .padding(.top, 32)
+                .padding(.horizontal, 28)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    // MARK: - Bottom block(expiry card + hint)
+
+    private var bottomBlock: some View {
+        VStack(spacing: 18) {
+            expiryCard
                 .padding(.horizontal, 28)
 
             Text("このまま閉じても大丈夫です。\n承認されたら通知でお知らせします。")
@@ -108,71 +121,107 @@ struct PairWaitingView: View {
                 .foregroundColor(Color(hex: "5A5566"))
                 .multilineTextAlignment(.center)
                 .lineSpacing(5)
-                .padding(.top, 18)
+                .tracking(0.2)
         }
+        .padding(.bottom, 24)
     }
 
-    private var avatarsRow: some View {
+    private var expiryCard: some View {
+        VStack(spacing: 6) {
+            Text("有効期限まで")
+                .font(.system(size: 10.5))
+                .foregroundColor(Color(hex: "7A7588"))
+                .tracking(0.6)
+                .textCase(.uppercase)
+            Text(countdownString)
+                .font(.system(size: 17, weight: .medium, design: .monospaced))
+                .foregroundColor(.white)
+                .tracking(1)
+                .monospacedDigit()
+            Text("24 時間以内に承認されないと自動的に失効します。")
+                .font(.system(size: 10.5))
+                .foregroundColor(Color(hex: "7A7588"))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .tracking(0.2)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.03))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.07), lineWidth: 0.5)
+                )
+        )
+    }
+
+    // MARK: - Footer
+
+    private var footerButton: some View {
+        Button(action: onCancel) {
+            Text("申請を取り消す")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Color.pairtuneSyncBad)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.pairtuneSyncBad.opacity(0.05))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.pairtuneSyncBad.opacity(0.2), lineWidth: 0.5)
+                        )
+                )
+        }
+        .padding(.horizontal, 22)
+        .padding(.bottom, 36)
+    }
+
+    // MARK: - Avatars
+
+    private var meAvatarWithRipples: some View {
         ZStack {
-            // ripples emitting from me (left)
+            // 3 重リップル(jsx: 80×80 circle, primary44, 2.4s, 0/0.6/1.2 delay)
             ForEach(0..<3, id: \.self) { i in
                 Circle()
                     .stroke(Color.pairtunePrimary.opacity(0.27), lineWidth: 1)
                     .frame(width: 80, height: 80)
                     .scaleEffect(rippleScale(seed: i))
                     .opacity(rippleOpacity(seed: i))
-                    .offset(x: -70)
-                    .animation(
-                        .easeOut(duration: 2.4)
-                            .repeatForever(autoreverses: false)
-                            .delay(Double(i) * 0.6),
-                        value: now
-                    )
             }
 
-            HStack(spacing: 0) {
-                meAvatar
-                connectingWave
-                    .frame(width: 90, height: 24)
-                    .opacity(0.7)
-                partnerAvatarDim
-            }
-        }
-    }
-
-    private var meAvatar: some View {
-        Circle()
-            .fill(
-                LinearGradient(
+            Circle()
+                .fill(LinearGradient(
                     colors: [Color.pairtunePrimary, Color.pairtunePrimary.opacity(0.65)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .frame(width: 64, height: 64)
+                .overlay(
+                    Text(myInitial)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(Color(hex: "0A0612"))
                 )
-            )
-            .frame(width: 64, height: 64)
-            .overlay(
-                Text(myInitial)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(Color(red: 0x0A/255, green: 0x06/255, blue: 0x12/255))
-            )
-            .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 1.5))
-            .shadow(color: Color.pairtunePrimary.opacity(0.27), radius: 14, y: 6)
+                .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 1.5))
+                .shadow(color: Color.pairtunePrimary.opacity(0.27), radius: 14, y: 6)
+        }
+        .frame(width: 80, height: 80)
     }
 
     private var partnerAvatarDim: some View {
         Circle()
-            .fill(
-                LinearGradient(
-                    colors: [Color.pairtuneSecondary, Color.pairtuneSecondary.opacity(0.65)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .fill(LinearGradient(
+                colors: [Color.pairtuneSecondary, Color.pairtuneSecondary.opacity(0.65)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
             .frame(width: 64, height: 64)
             .overlay(
-                Text("?")
+                Text(String(partnerName?.prefix(2) ?? "SA").uppercased())
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(Color(red: 0x0A/255, green: 0x06/255, blue: 0x12/255))
+                    .foregroundColor(Color(hex: "0A0612"))
             )
             .overlay(
                 Circle().stroke(
@@ -184,114 +233,18 @@ struct PairWaitingView: View {
             .saturation(0.6)
     }
 
-    /// dashed wave between the two avatars (animated)
-    private var connectingWave: some View {
-        Canvas { ctx, size in
-            let h = size.height
-            let w = size.width
-            let mid = h / 2
-            var path = Path()
-            path.move(to: CGPoint(x: 1, y: mid))
-            let cycle: CGFloat = w / 8
-            var x: CGFloat = 1
-            var up = true
-            while x < w - 1 {
-                let next = min(x + cycle, w - 1)
-                let ctrlY = up ? mid - 8 : mid + 8
-                path.addQuadCurve(
-                    to: CGPoint(x: next, y: mid),
-                    control: CGPoint(x: (x + next) / 2, y: ctrlY)
-                )
-                x = next
-                up.toggle()
-            }
-            ctx.stroke(
-                path,
-                with: .color(Color.pairtunePrimary),
-                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [2, 3])
-            )
-        }
-    }
-
-    // MARK: - Countdown card
-
-    private var countdownCard: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(countdownString)
-                    .font(.system(size: 24, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white)
-                    .tracking(1)
-                Text("有効期限まで · expires in")
-                    .font(.system(size: 10.5))
-                    .foregroundColor(Color(hex: "5A5566"))
-                    .tracking(0.5)
-            }
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 1, height: 36)
-            VStack(alignment: .leading, spacing: 0) {
-                if let targetCode {
-                    Text(targetCode)
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.pairtunePrimary)
-                        .tracking(3)
-                }
-                Text("申請から 24h 以内に承認されないと、自動的に失効します。")
-                    .font(.system(size: 10.5))
-                    .foregroundColor(Color(hex: "7A7588"))
-                    .lineSpacing(2)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.03))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: 0.5)
-                )
-        )
-    }
+    // MARK: - Helpers
 
     private var countdownString: String {
         guard let expiresAt else { return "--:--:--" }
-        let remaining = max(0, expiresAt.timeIntervalSince(now))
-        let h = Int(remaining) / 3600
-        let m = (Int(remaining) % 3600) / 60
-        let s = Int(remaining) % 60
+        let remaining = max(0, Int(expiresAt.timeIntervalSince(now)))
+        let h = remaining / 3600
+        let m = (remaining % 3600) / 60
+        let s = remaining % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
-    // MARK: - Footer
-
-    private var footerButtons: some View {
-        VStack(spacing: 10) {
-            Button(action: onCancel) {
-                Text("申請を取り消す")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(hex: "E85B6B"))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color(hex: "E85B6B").opacity(0.05))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Color(hex: "E85B6B").opacity(0.20), lineWidth: 0.5)
-                            )
-                    )
-            }
-        }
-        .padding(.horizontal, 22)
-        .padding(.bottom, 36)
-    }
-
-    // MARK: - Ripple helpers
-
     private func rippleScale(seed: Int) -> CGFloat {
-        // Use seconds since reference as a 0→2.6 ramp per ripple
         let phase = (now.timeIntervalSinceReferenceDate + Double(seed) * 0.6)
             .truncatingRemainder(dividingBy: 2.4) / 2.4
         return 0.6 + CGFloat(phase) * 2.0
@@ -303,3 +256,4 @@ struct PairWaitingView: View {
         return 0.9 * (1 - phase)
     }
 }
+

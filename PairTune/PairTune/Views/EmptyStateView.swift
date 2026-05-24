@@ -60,17 +60,12 @@ struct EmptyStateView: View {
 
                 VStack(spacing: 0) {
                     iconRound
+                    // v0.5: 英語サブタイトル削除(jsx と一致)
                     Text(titleJa)
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .tracking(0.2)
                         .padding(.top, 18)
-                    Text(titleEn)
-                        .font(.system(size: 11.5))
-                        .foregroundColor(Color(hex: "5A5566"))
-                        .tracking(0.6)
-                        .textCase(.uppercase)
-                        .padding(.top, 4)
                     Text(descriptionOverride ?? descriptionDefault)
                         .font(.system(size: 13))
                         .foregroundColor(Color(hex: "A8A8A8"))
@@ -151,14 +146,6 @@ struct EmptyStateView: View {
         case .noResults: return "見つかりません"
         case .offline:   return "オフライン"
         case .authError: return "Apple Music にアクセスできません"
-        }
-    }
-
-    private var titleEn: String {
-        switch kind {
-        case .noResults: return "No results"
-        case .offline:   return "You’re offline"
-        case .authError: return "Apple Music unavailable"
         }
     }
 
