@@ -30,8 +30,8 @@ struct ProfileView: View {
     @State private var avatarUploading: Bool = false
 
     // Privacy (load from profile)
+    // v0.5: shareFavorites は廃止。再生履歴のみ opt-out 可能。
     @State private var sharePlayHistory: Bool = false
-    @State private var shareFavorites: Bool = true
 
     // Notifications
     @State private var notifyMilestones: Bool = true
@@ -119,7 +119,6 @@ struct ProfileView: View {
                 displayName = profile.displayName
                 avatarUrl = profile.avatarUrl
                 sharePlayHistory = profile.sharePlayHistory
-                shareFavorites = profile.shareFavorites
                 notifyMilestones = profile.notifyMilestones
                 notifyPartnerOnline = profile.notifyPartnerOnline
             }
@@ -478,27 +477,14 @@ struct ProfileView: View {
     }
 
     // MARK: - Privacy group
+    //
+    // v0.5: お気に入りトグルは廃止(♥ は常に共有)。再生履歴のみ opt-out 可能。
 
     private var privacyGroup: some View {
-        SettingsGroup(label: "プライバシー", sub: "Privacy", icon: "lock", accent: .pairtunePrimary) {
-            SettingsToggleRow(
-                title: "お気に入りをパートナーに見せる",
-                description: "あなたが ♥ をつけた曲だけが、パートナーの Solo モードに表示されます。",
-                isOn: $shareFavorites,
-                accent: .pairtunePrimary
-            )
-            .onChange(of: shareFavorites) { _, newValue in
-                Task {
-                    await authViewModel.updatePrivacySettings(
-                        sharePlayHistory: sharePlayHistory,
-                        shareFavorites: newValue
-                    )
-                }
-            }
-            SettingsDivider()
+        SettingsGroup(label: "プライバシー", icon: "lock", accent: .pairtunePrimary) {
             SettingsToggleRow(
                 title: "再生履歴をパートナーに見せる",
-                description: "あなたがマイルームで聴いた曲が、パートナーの Solo モードに表示されます。",
+                description: "あなたがマイルームで聴いた曲が、パートナーの文脈画面に表示されます。",
                 isOn: $sharePlayHistory,
                 accent: .pairtunePrimary
             )
@@ -506,7 +492,7 @@ struct ProfileView: View {
                 Task {
                     await authViewModel.updatePrivacySettings(
                         sharePlayHistory: newValue,
-                        shareFavorites: shareFavorites
+                        shareFavorites: true   // 互換のため true 固定で送る(DB カラムは 0011 で削除済み)
                     )
                 }
             }
@@ -516,7 +502,7 @@ struct ProfileView: View {
     // MARK: - Notifications group
 
     private var notificationsGroup: some View {
-        SettingsGroup(label: "通知", sub: "Notifications", icon: "bell", accent: .pairtuneSecondary) {
+        SettingsGroup(label: "通知", icon: "bell", accent: .pairtuneSecondary) {
             SettingsToggleRow(
                 title: "記念日のお知らせ",
                 description: "1 ヶ月、100 日、1 周年など節目だけお知らせ。",
@@ -575,7 +561,7 @@ struct ProfileView: View {
                 }
             }
         )
-        return SettingsGroup(label: "思い出と履歴", sub: "Memories & data", icon: "music.note", accent: Color(hex: "7A7588")) {
+        return SettingsGroup(label: "思い出と履歴", icon: "music.note", accent: Color(hex: "7A7588")) {
             SettingsToggleRow(
                 title: "解消後も思い出を残す",
                 description: hasEndedPair
@@ -590,7 +576,7 @@ struct ProfileView: View {
     // MARK: - Account group
 
     private var accountGroup: some View {
-        SettingsGroup(label: "アカウント", sub: "Account", icon: "person.crop.circle", accent: Color(hex: "A8A8A8")) {
+        SettingsGroup(label: "アカウント", icon: "person.crop.circle", accent: Color(hex: "A8A8A8")) {
             SettingsRow(
                 label: "Apple ID",
                 value: authViewModel.session?.user.email ?? "—"
@@ -657,35 +643,30 @@ private struct IdentifiableURL: Identifiable {
 
 private struct SettingsGroup<Content: View>: View {
     let label: String
-    let sub: String
     let icon: String
     let accent: Color
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 9) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(accent.opacity(0.11))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .stroke(accent.opacity(0.30), lineWidth: 0.5)
                         )
-                        .frame(width: 18, height: 18)
+                        .frame(width: 26, height: 26)
                     Image(systemName: icon)
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(accent)
                 }
+                // v0.5: 英語サブコピー削除、設定タイトルは 18pt に
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(hex: "A8A8A8"))
-                    .tracking(0.4)
-                    .textCase(.uppercase)
-                Text("· \(sub)")
-                    .font(.system(size: 10))
-                    .foregroundColor(Color(hex: "3F3F4A"))
-                    .tracking(0.3)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .tracking(0.2)
                 Spacer()
             }
             .padding(.horizontal, 2)
