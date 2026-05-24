@@ -26,7 +26,20 @@ struct AllSessionsView: View {
     var body: some View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
-            ambientGlow
+
+            // ambient glow を Color.clear.overlay でラップし、frame(600) で layout box を
+            // 引き伸ばさないようにする(直接 ZStack の子に置くと右側にはみ出す)
+            Color.clear
+                .overlay {
+                    Ellipse()
+                        .fill(Color.pairtunePrimary.opacity(0.13))
+                        .frame(width: 600, height: 380)
+                        .blur(radius: 60)
+                        .offset(y: -240)
+                        .allowsHitTesting(false)
+                }
+                .clipped()
+                .ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -48,8 +61,11 @@ struct AllSessionsView: View {
                         .padding(.top, 6)
                         .padding(.bottom, 60)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .clipped()
         }
+        .clipped()
     }
 
     private var statsCard: some View {
@@ -84,15 +100,6 @@ struct AllSessionsView: View {
                 .tracking(0.3)
         }
     }
-
-    private var ambientGlow: some View {
-        Ellipse()
-            .fill(Color.pairtunePrimary.opacity(0.13))
-            .frame(width: 600, height: 380)
-            .blur(radius: 60)
-            .offset(y: -240)
-            .allowsHitTesting(false)
-    }
 }
 
 // MARK: - SessionDetailView
@@ -109,7 +116,18 @@ struct SessionDetailView: View {
     var body: some View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
-            ambientGlow
+
+            Color.clear
+                .overlay {
+                    Ellipse()
+                        .fill(Color.pairtunePrimary.opacity(0.13))
+                        .frame(width: 600, height: 380)
+                        .blur(radius: 60)
+                        .offset(y: -240)
+                        .allowsHitTesting(false)
+                }
+                .clipped()
+                .ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -179,17 +197,11 @@ struct SessionDetailView: View {
                     .padding(.horizontal, 18)
                     .padding(.bottom, 60)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .clipped()
         }
-    }
-
-    private var ambientGlow: some View {
-        Ellipse()
-            .fill(Color.pairtunePrimary.opacity(0.13))
-            .frame(width: 600, height: 380)
-            .blur(radius: 60)
-            .offset(y: -240)
-            .allowsHitTesting(false)
+        .clipped()
     }
 }
 
@@ -207,7 +219,18 @@ struct PairPlaylistDetailView: View {
     var body: some View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
-            ambientGlow
+
+            Color.clear
+                .overlay {
+                    Ellipse()
+                        .fill(Color.pairtunePrimary.opacity(0.13))
+                        .frame(width: 600, height: 380)
+                        .blur(radius: 60)
+                        .offset(y: -240)
+                        .allowsHitTesting(false)
+                }
+                .clipped()
+                .ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -250,9 +273,12 @@ struct PairPlaylistDetailView: View {
                         .padding(.horizontal, 18)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 60)
             }
+            .clipped()
         }
+        .clipped()
     }
 
     private var hero: some View {
@@ -324,14 +350,6 @@ struct PairPlaylistDetailView: View {
         )
     }
 
-    private var ambientGlow: some View {
-        Ellipse()
-            .fill(Color.pairtunePrimary.opacity(0.13))
-            .frame(width: 600, height: 380)
-            .blur(radius: 60)
-            .offset(y: -240)
-            .allowsHitTesting(false)
-    }
 }
 
 // MARK: - Track row (Session / Playlist 共通の小行)
