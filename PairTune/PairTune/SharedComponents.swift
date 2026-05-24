@@ -538,121 +538,153 @@ private struct DonutShape: Shape {
     }
 }
 
-// MARK: - Tonearm overlay
+// MARK: - Tonearm overlay (v0.5)
+//
+// jsx 仕様 (docs/design_v3_source/screens-room.jsx):
+//   - container 内 pivot 位置: left 93% / top 10%
+//   - pivot 形状: width 16% / aspectRatio 0.78:1(縦長楕円)+ 内側に小さなキャプセル
+//   - arm: width 68% / height 6px、transform-origin '0 50%' (pivot 中央左)
+//   - arm 角度: paused = 90deg(真下)/ playing = 95deg(わずかに内側)
+//   - transition: 0.8s spring
+//   - cartridge (headshell): 28×22, translate(-58%, -20%) で arm 端点から微オフセット
+//   - needle: 2×8 を cartridge 下部から突出
+//   - counterweight: jsx には無い(撤去)
 
 private struct TonearmView: View {
     let size: CGFloat
     let playing: Bool
 
-    private var pivotX: CGFloat { size * 0.83 }
-    private var pivotY: CGFloat { size * 0.12 }
-    private var pivotDiam: CGFloat { size * 0.11 }
-    private var armLen: CGFloat { size * 0.50 }
-    private var armAngle: Double { playing ? 160 : 140 }
-    private var counterDim: CGFloat { size * 0.07 }
+    // jsx 通りのレイアウト比率
+    private var pivotCenterX: CGFloat { size * 0.93 }
+    private var pivotCenterY: CGFloat { size * 0.10 }
+    private var pivotW: CGFloat { size * 0.16 }
+    private var pivotH: CGFloat { pivotW / 0.78 }   // aspectRatio 0.78:1
+    private var armLen: CGFloat { size * 0.68 }
+    private var armHeight: CGFloat { 6 }
+    private var armAngle: Double { playing ? 95 : 90 }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Arm assembly (shaft + headshell + needle), rotates around its leading-mid
+            // arm + cartridge(回転は arm の leading-center 周り)
             armAssembly
-                .frame(width: armLen, height: 4, alignment: .leading)
+                .frame(width: armLen, height: armHeight, alignment: .leading)
                 .rotationEffect(.degrees(armAngle), anchor: UnitPoint(x: 0, y: 0.5))
-                .offset(x: pivotX, y: pivotY - 2)
-                .animation(.spring(response: 0.55, dampingFraction: 0.65), value: playing)
+                .offset(x: pivotCenterX, y: pivotCenterY - armHeight / 2)
+                .animation(.spring(response: 0.8, dampingFraction: 0.65), value: playing)
 
-            // Counterweight
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(LinearGradient(
-                    colors: [Color(hex: "2A2A2A"), Color(hex: "0A0A0A")],
-                    startPoint: .top, endPoint: .bottom
-                ))
-                .frame(width: counterDim, height: counterDim)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-                )
-                .shadow(color: .black.opacity(0.6), radius: 3, y: 2)
-                .rotationEffect(.degrees(-30))
-                .offset(x: size * 0.92 - counterDim / 2, y: size * 0.05 - counterDim / 2)
-
-            // Pivot (drawn last, on top of arm base)
+            // pivot(arm の上に重ねる)
             pivot
-                .frame(width: pivotDiam, height: pivotDiam)
-                .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
-                .offset(x: pivotX - pivotDiam / 2, y: pivotY - pivotDiam / 2)
+                .frame(width: pivotW, height: pivotH)
+                .offset(x: pivotCenterX - pivotW / 2, y: pivotCenterY - pivotH / 2)
         }
         .frame(width: size, height: size, alignment: .topLeading)
         .allowsHitTesting(false)
     }
 
+    // jsx: shaft(銀色グラデ)+ cartridge を arm 端点に配置
     private var armAssembly: some View {
         ZStack(alignment: .leading) {
             // shaft
             Capsule()
                 .fill(LinearGradient(
-                    colors: [Color(hex: "D0D0D0"), Color(hex: "909090"), Color(hex: "555555")],
+                    colors: [Color(hex: "E2E2E8"), Color(hex: "B0B0B8"), Color(hex: "6A6A72")],
                     startPoint: .top, endPoint: .bottom
                 ))
-                .frame(width: armLen, height: 4)
-                .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
+                .overlay(
+                    // 上端のハイライト
+                    Capsule()
+                        .fill(LinearGradient(
+                            colors: [Color.white.opacity(0.4), .clear],
+                            startPoint: .top, endPoint: .center
+                        ))
+                )
+                .frame(width: armLen, height: armHeight)
+                .shadow(color: .black.opacity(0.55), radius: 2.5, y: 1)
 
-            // headshell at far end
-            headshell
-                .frame(width: 26, height: 18)
-                .offset(x: armLen - 13)
+            // cartridge / headshell at far end
+            // jsx: translate(-58%, -20%) で arm 端点を基準にオフセット
+            cartridge
+                .frame(width: 28, height: 22)
+                .offset(x: armLen - 28 * 0.58, y: -22 * 0.20)
         }
     }
 
-    private var headshell: some View {
+    private var cartridge: some View {
         ZStack {
-            UnevenRoundedRectangle(
-                cornerRadii: .init(topLeading: 3, bottomLeading: 7, bottomTrailing: 7, topTrailing: 3),
-                style: .continuous
-            )
+            cartridgeBody
+            cartridgeNeedle
+        }
+    }
+
+    private var cartridgeShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            cornerRadii: .init(
+                topLeading: 4,
+                bottomLeading: 8,
+                bottomTrailing: 8,
+                topTrailing: 4
+            ),
+            style: .continuous
+        )
+    }
+
+    private var cartridgeBody: some View {
+        cartridgeShape
             .fill(LinearGradient(
-                colors: [Color(hex: "1A1A1A"), Color(hex: "0A0A0A")],
+                colors: [Color(hex: "202028"), Color(hex: "0A0A10")],
                 startPoint: .top, endPoint: .bottom
             ))
             .overlay(
-                UnevenRoundedRectangle(
-                    cornerRadii: .init(topLeading: 3, bottomLeading: 7, bottomTrailing: 7, topTrailing: 3),
-                    style: .continuous
-                )
-                .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+                cartridgeShape.stroke(Color.white.opacity(0.06), lineWidth: 0.5)
             )
             .shadow(color: .black.opacity(0.7), radius: 4, y: 2)
-
-            // Needle protruding past bottom edge
-            Rectangle()
-                .fill(LinearGradient(
-                    colors: [Color(hex: "AAAAAA"), Color(hex: "2A2A2A")],
-                    startPoint: .top, endPoint: .bottom
-                ))
-                .frame(width: 2, height: 7)
-                .offset(y: 9 + 2)  // headshell half-height (9) + a bit
-        }
     }
 
+    // needle(下から 88% 位置に出る 2×8 の銀棒)
+    private var cartridgeNeedle: some View {
+        let needleH: CGFloat = 8
+        let yOffset: CGFloat = 22 * 0.88 - 11 + needleH / 2
+        return Rectangle()
+            .fill(LinearGradient(
+                colors: [Color(hex: "C8C8D0"), Color(hex: "4A4A52")],
+                startPoint: .top, endPoint: .bottom
+            ))
+            .frame(width: 2, height: needleH)
+            .offset(y: yOffset)
+    }
+
+    // jsx: 縦長楕円のピボット台 + 内側に小さなキャプセル top
     private var pivot: some View {
         ZStack {
-            Circle()
+            // 楕円ベース(縦長)
+            Ellipse()
                 .fill(
                     RadialGradient(
-                        gradient: Gradient(colors: [Color(hex: "4A4A4A"), Color(hex: "1A1A1A"), Color(hex: "0A0A0A")]),
-                        center: UnitPoint(x: 0.35, y: 0.30),
-                        startRadius: 0, endRadius: pivotDiam * 0.5
+                        gradient: Gradient(colors: [
+                            Color(hex: "4A4A52"),
+                            Color(hex: "1F1F25"),
+                            Color(hex: "0E0E12")
+                        ]),
+                        center: UnitPoint(x: 0.38, y: 0.28),
+                        startRadius: 0, endRadius: pivotW * 0.6
                     )
                 )
-                .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.5))
+                .overlay(Ellipse().stroke(Color.white.opacity(0.04), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.7), radius: 6, y: 4)
 
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [Color(hex: "2A2A2A"), Color(hex: "0A0A0A")]),
-                        center: .center, startRadius: 0, endRadius: pivotDiam * 0.22
-                    )
+            // 中央の小さなキャプセル(内側)
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(LinearGradient(
+                    colors: [Color(hex: "2A2A32"), Color(hex: "0A0A10")],
+                    startPoint: .top, endPoint: .bottom
+                ))
+                .frame(width: pivotW * 0.46, height: pivotH * 0.36)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
                 )
-                .frame(width: pivotDiam * 0.44, height: pivotDiam * 0.44)
+                .shadow(color: .black.opacity(0.5), radius: 1.5, y: 1.5)
+                .offset(y: pivotH * 0.04)   // jsx: top 54%(中央より少し下)
         }
     }
 }
