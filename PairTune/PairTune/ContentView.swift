@@ -13,7 +13,6 @@ struct ContentView: View {
 
     @State private var showCodeEntry: Bool = false
     @State private var showSettings: Bool = false
-    @State private var showSoloMode: Bool = false
     @State private var showPairWaiting: Bool = false
 
     // v0.5.1 §5.8: Connect Music ゲートウェイ
@@ -24,13 +23,6 @@ struct ContentView: View {
     @State private var pairViewModel = PairViewModel()
     @State private var soloHistoryVM = SoloHistoryViewModel()
     @State private var roomViewModel: RoomViewModel?
-
-    // SoloModeView から検索モーダル経由で曲を選ぶフロー用
-    // - search ボタンタップ時に room + search VM を pre-create
-    // - preparedSearchVM が非 nil の間だけ sheet が表示される(.sheet(item:))
-    // - 曲選択 (playAsHost が走り activeSongId が立つ) → onDismiss で RoomView に遷移
-    @State private var preparedSoloRoom: RoomViewModel?
-    @State private var preparedSearchVM: SearchViewModel?
 
     @State private var pendingSendAlert: PairSendAlert?
 
@@ -82,7 +74,6 @@ struct ContentView: View {
                 // ナビゲーション状態をリセット（再サインイン時に設定画面が残らないよう）
                 showSettings = false
                 showCodeEntry = false
-                showSoloMode = false
                 showPairWaiting = false
             }
         }
@@ -181,16 +172,20 @@ struct ContentView: View {
                         }
                     },
                     onSolo: {
+                        // v0.5: Solo は Room 起点。Home → Solo ボタン → Solo Room に直行する
+                        // (旧 SoloModeView の push 経路は廃止)
                         gateThenRun(intent: .solo) {
-                            showSoloMode = true
                             Task {
                                 let userId = authViewModel.session?.user.id.uuidString ?? ""
                                 let partnerId = pairViewModel.activePair?.partnerUserId(meId: userId.lowercased())
-                                await soloHistoryVM.load(
+                                async let _ = soloHistoryVM.load(
                                     pairId: pairViewModel.activePair?.id,
                                     userId: userId,
                                     partnerUserId: partnerId
                                 )
+                                await homeViewModel.loadMyRoom()
+                                guard let myRoom = homeViewModel.myRoom else { return }
+                                roomViewModel = RoomViewModel(myRoom: myRoom)
                             }
                         }
                     },
@@ -205,45 +200,9 @@ struct ContentView: View {
                         sharingPairingCode: authViewModel.pairingCode
                     )
                 }
-                // Solo モード: Navigation push（HIG — 階層的ドリルダウン）
-                .navigationDestination(isPresented: $showSoloMode) {
-                    SoloModeView(
-                        viewModel: soloHistoryVM,
-                        partnerName: pairViewModel.partnerProfile?.displayName,
-                        hasPair: pairViewModel.activePair != nil,
-                        partnerSharesFavorites: pairViewModel.partnerProfile?.shareFavorites ?? false,
-                        userId: authViewModel.session?.user.id.uuidString ?? "",
-                        pairId: pairViewModel.activePair?.id,
-                        pair: pairViewModel.activePair,
-                        onExit: { showSoloMode = false },
-                        onPlayTrack: { entry in
-                            Task { await startSoloPlayback(entry: entry) }
-                        },
-                        onSearch: {
-                            Task { await openSoloSearch() }
-                        },
-                        onPair: {
-                            showSoloMode = false
-                            showCodeEntry = true
-                        }
-                    )
-                    // 検索モーダル: SoloModeView 直接表示。曲選択後 (activeSongId が立った状態で onDismiss)、
-                    // pre-created RoomViewModel を表示用 state にコピーして RoomView を開く。
-                    // `preparedSearchVM` を直接 item にして sheet を駆動する。
-                    // showSoloSearch / preparedSearchVM の二段 state が ズレて
-                    // 「シート表示中なのに VM nil」になる事故を回避するための統合。
-                    .sheet(item: $preparedSearchVM, onDismiss: handleSoloSearchDismiss) { svm in
-                        SearchSheet(
-                            isPresented: Binding(
-                                get: { preparedSearchVM != nil },
-                                set: { newValue in
-                                    if !newValue { preparedSearchVM = nil }
-                                }
-                            ),
-                            viewModel: svm
-                        )
-                    }
-                }
+                // v0.5: 旧 SoloModeView の push 経路は撤去。Solo は Room 起点に変更され、
+                // Home → Solo ボタンが直接 RoomViewModel を生成して RoomView オーバーレイを開く。
+                // 文脈画面(SoloContextView)は Room の文脈ボタン → fullScreenCover で開く。
                 // コード入力: Modal sheet（HIG — 独立した完結タスク）
                 .sheet(isPresented: $showCodeEntry) {
                     CodeEntrySheet(
@@ -326,61 +285,9 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.3), value: roomViewModel != nil)
     }
 
-    // MARK: - Solo playback helpers
-
-    /// Solo モードで指定曲(または最後に聴いた曲)を再生してルームを開く。
-    /// 1) myRoom をロード → RoomViewModel 生成
-    /// 2) pendingInitialTrack に Track を仕込む(enterRoom 後に playAsHost が走る)
-    /// 3) roomViewModel に代入 → RoomView オーバーレイ表示 → .task で enterRoom + 自動再生
-    private func startSoloPlayback(entry: PlayHistoryEntry?) async {
-        await homeViewModel.loadMyRoom()
-        guard let myRoom = homeViewModel.myRoom else { return }
-        let vm = RoomViewModel(myRoom: myRoom)
-        vm.pendingInitialTrack = entry?.toTrack()
-        roomViewModel = vm
-    }
-
-    /// SoloModeView の検索ボタン → SearchSheet モーダルを直接表示する。
-    /// RoomViewModel + SearchViewModel を裏で生成しておき、曲選択時に SearchViewModel が
-    /// playAsHost を呼ぶ。onDismiss で activeSongId をチェックし、再生開始済みなら RoomView へ。
-    private func openSoloSearch() async {
-        await homeViewModel.loadMyRoom()
-        guard let myRoom = homeViewModel.myRoom else { return }
-
-        // 1. Apple Music の認可だけ先に await。これは権限ダイアログを出すだけで
-        //    ApplicationMusicPlayer の daemon 接続を伴わないため軽量。
-        //    検索 API(MusicDataRequest)はこの認可だけで使える。
-        _ = await MusicAuthorization.request()
-
-        // 2. VM 構築 → preparedSearchVM をセットすると `.sheet(item:)` が
-        //    自動でシートを開く。state が一致したまま表示されるので、
-        //    「シート表示中だが preparedSearchVM == nil」というずれが起きない。
-        let vm = RoomViewModel(myRoom: myRoom)
-        let svm = SearchViewModel(roomViewModel: vm)
-        preparedSoloRoom = vm
-        preparedSearchVM = svm
-
-        // 3. enterRoom(ApplicationMusicPlayer.shared の queue 接続を含む)はシミュレータ
-        //    等で `_establishConnectionIfNeeded timeout` を起こして数十秒ブロックする
-        //    ことがあるため、シート表示後にバックグラウンドで実行する。
-        let userId = authViewModel.session?.user.id.uuidString ?? ""
-        Task { await vm.enterRoom(userId: userId, displayName: nil) }
-    }
-
-    private func handleSoloSearchDismiss() {
-        defer {
-            preparedSoloRoom = nil
-            preparedSearchVM = nil
-        }
-        guard let vm = preparedSoloRoom else { return }
-        // 曲が選ばれて playAsHost が走った場合のみ activeSongId が立つ。立っていなければ
-        // ユーザーがキャンセルしたとみなし、ルームを開かずに破棄する。
-        if !vm.activeSongId.isEmpty {
-            roomViewModel = vm
-        } else {
-            Task { await vm.leaveRoom() }
-        }
-    }
+    // v0.5: Solo は Room 起点。Home → Solo ボタンで RoomViewModel を直接生成し、
+    // 内部で SearchSheet / 検索 / 履歴 / 文脈画面の動線が完結する。
+    // 旧 SoloModeView を経由した中間 search-sheet ハンドリングは撤去。
 }
 
 // MARK: - Pair send alert payload
