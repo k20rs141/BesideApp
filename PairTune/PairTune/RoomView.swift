@@ -116,21 +116,26 @@ struct RoomView: View {
                                 .padding(.horizontal, 28)
                         }
 
-                        // Sync wave (V5 Deep redesign)
-                        SyncWaveView(state: syncState, primary: .pairtunePrimary, secondary: .pairtuneSecondary)
-                            .padding(.top, 18)
+                        // v0.5: 3-dot pulse indicator(Solo / Shared でラベル違い)
+                        Group {
+                            if roomViewModel.mode == .solo {
+                                SoloIndicator(state: syncState)
+                            } else {
+                                SyncWaveView(state: syncState)
+                            }
+                        }
+                        .padding(.top, 18)
 
                         Spacer()
 
                         // Participants + controls
+                        // v0.5: 「○○ さんを待っています」のテキスト表示は撤去(jsx review)。
+                        // 相手不在は participants の partner avatar を dim させて示す。
                         VStack(spacing: 14) {
                             participantsRow
-                            if roomViewModel.mode == .shared && (partnerName == nil || participantCount < 2) {
-                                waitingForPartner
-                            }
+                            secondaryActions
                             if isHost { hostControls }
                             else       { guestLabel }
-                            secondaryActions
                         }
                         .padding(.horizontal, 22)
                         .padding(.bottom, 38)
@@ -266,10 +271,9 @@ struct RoomView: View {
                 Spacer()
             }
 
-            // ヘッダ右上は share ボタンのみ(キューは playback controls に置く設計 §2.15)。
-            FrostedCircleButton(icon: "square.and.arrow.up", size: 38) {
-                showToast("招待リンクをシェアしました")
-            }
+            // v0.5.1: ヘッダ右側の Share ボタンは jsx で削除済み(招待は Home の CodeChip から)。
+            // シンメトリのために空の 38pt スロットだけ残す。
+            Color.clear.frame(width: 38, height: 38)
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
@@ -337,16 +341,42 @@ struct RoomView: View {
         }
     }
 
+    /// 参加者ストリップ。
+    /// - Solo: 36pt avatar + 「あなただけの部屋」ラベル(jsx の SoloPresence row)
+    /// - Shared: 2 avatars 40pt + 各自の名前。相手が未参加なら相手アバターは dim
     private var participantsRow: some View {
-        HStack(spacing: 14) {
-            participantBadge(name: meName, isMe: true)
-            if let partnerName, roomViewModel.mode == .shared {
-                participantBadge(name: partnerName, isMe: false)
+        Group {
+            if roomViewModel.mode == .solo {
+                HStack(spacing: 8) {
+                    RemoteAvatarView(
+                        url: myAvatarUrl.flatMap(URL.init(string:)),
+                        initials: String(meName.prefix(2)).uppercased(),
+                        color: .pairtunePrimary,
+                        size: 36,
+                        strokeColor: Color(hex: "1A1A1A"),
+                        strokeWidth: 1.5
+                    )
+                    Text("あなただけの部屋")
+                        .font(.system(size: 11.5))
+                        .foregroundColor(Color(hex: "7A7588"))
+                        .tracking(0.3)
+                }
+                .padding(.vertical, 10)
+            } else {
+                HStack(spacing: 14) {
+                    participantBadge(name: meName, isMe: true, dim: false)
+                    if let partnerName {
+                        // 相手アバターは「相手が未入室(participantCount < 2)」なら dim
+                        let waiting = participantCount < 2
+                        participantBadge(name: partnerName, isMe: false, dim: waiting)
+                    }
+                }
+                .padding(.vertical, 10)
             }
         }
     }
 
-    private func participantBadge(name: String, isMe: Bool) -> some View {
+    private func participantBadge(name: String, isMe: Bool, dim: Bool) -> some View {
         let url = (isMe ? myAvatarUrl : partnerAvatarUrl).flatMap(URL.init(string:))
         return VStack(spacing: 5) {
             RemoteAvatarView(
@@ -355,13 +385,15 @@ struct RoomView: View {
                 color: isMe ? .pairtunePrimary : .pairtuneSecondary,
                 size: 40,
                 strokeColor: Color(hex: "1A1A1A"),
-                strokeWidth: 1.5
+                strokeWidth: 1.5,
+                dim: dim
             )
             Text(name)
                 .font(.system(size: 10.5))
                 .foregroundColor(isMe ? .white : .pairtuneTextSecondary)
                 .tracking(0.2)
                 .lineLimit(1)
+                .opacity(dim ? 0.55 : 1.0)
         }
     }
 
@@ -547,27 +579,8 @@ struct RoomView: View {
         .padding(.top, 4)
     }
 
-    // MARK: - Waiting-for-partner indicator (Shared モード、相手不在時)
-
-    private var waitingForPartner: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(Color.pairtuneSyncWarn)
-                .frame(width: 6, height: 6)
-                .opacity(0.85)
-            Text("\(partnerName ?? "相手") さんを待っています")
-                .font(.system(size: 11.5))
-                .foregroundColor(Color.pairtuneSyncWarn)
-                .tracking(0.3)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(Color.pairtuneSyncWarn.opacity(0.08))
-                .overlay(Capsule().stroke(Color.pairtuneSyncWarn.opacity(0.21), lineWidth: 0.5))
-        )
-    }
+    // v0.5: 「○○ さんを待っています」テキスト表示は jsx で撤去された。
+    // 相手不在は participantsRow で相手アバターを dim させて示す方式に統一。
 
     private var disconnectBanner: some View {
         HStack(spacing: 10) {

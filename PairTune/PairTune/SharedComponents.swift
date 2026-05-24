@@ -60,49 +60,40 @@ struct SyncBadgeView: View {
     }
 }
 
-// MARK: - Sync Wave Badge (V5 Deep redesign)
-// 2本の逆相波がスクロールするピル。speed/amp/color が SyncState で変わる。
-// Claude Design `screens-room.jsx::SyncWave` を SwiftUI に移植。
+// MARK: - Sync Wave Badge (v0.5: 3-dot pulse)
+//
+// chat6 のレビューで「Room — 3 ドット pulse」に統一(SoloIndicator と同系の表現)。
+// 旧 v0.4 の 2 本サイン波 Canvas は jsx で撤去された。
+// Claude Design `screens-room.jsx::SyncWave` を SwiftUI に移植(v0.5)。
 
 struct SyncWaveView: View {
     let state: SyncState
-    /// 上波の色(プライマリ)。playing 時のみ accent を、それ以外は state.color を使う。
+    /// playing 時の dot 色(state から導出する `playing` を変えたい時用、通常はデフォルトで OK)
     var primary: Color = .pairtunePrimary
-    /// 下波の色(セカンダリ)。
+    /// 互換のため secondary を受け取るが描画には使わない(旧 v0.4 の名残)
     var secondary: Color = .pairtuneSecondary
 
-    /// 状態ごとのウェーブ設定
-    private var config: (speed: Double, amp: CGFloat, color: Color) {
+    /// 状態ごとの設定(jsx の cfgs と一致)
+    private var config: (label: String, color: Color, duration: Double?) {
         switch state {
-        case .idle:         return (0,    0,    Color(hex: "3F3F4A"))
-        case .loading:      return (1.4,  0.5,  .pairtuneSyncWarn)
-        case .playing:      return (2.0,  1.0,  primary)
-        case .paused:       return (0,    0.4,  .pairtuneTextSecondary)
-        case .outOfSync:    return (2.8,  0.7,  .pairtuneSyncWarn)
-        case .disconnected: return (3.5,  0.3,  .pairtuneSyncBad)
+        case .idle:         return ("ホスト選曲待ち", Color(hex: "3F3F4A"), nil)
+        case .loading:      return ("読み込み中",     .pairtuneSyncWarn,   1.2)
+        case .playing:      return ("同期中",         primary,             1.2)
+        case .paused:       return ("一時停止",       .pairtuneTextSecondary, nil)
+        case .outOfSync:    return ("補正中",         .pairtuneSyncWarn,   0.7)
+        case .disconnected: return ("再接続中",       .pairtuneSyncBad,    0.5)
         }
     }
 
     var body: some View {
         let cfg = config
-
         HStack(spacing: 8) {
-            // miniature waveform
-            SyncWaveCanvas(
-                amp: cfg.amp,
-                speed: cfg.speed,
-                primaryColor: cfg.color,
-                secondaryColor: secondary
-            )
-            .frame(width: 36, height: 18)
-
-            Text(state.labelJa)
+            ThreeDotPulse(color: cfg.color, duration: cfg.duration)
+                .frame(width: 30, height: 14)
+            Text(cfg.label)
                 .font(.system(size: 11))
                 .foregroundColor(cfg.color)
                 .tracking(0.3)
-            Text("· \(state.labelEn)")
-                .font(.system(size: 10))
-                .foregroundColor(cfg.color.opacity(0.5))
         }
         .padding(.leading, 10)
         .padding(.trailing, 12)
@@ -116,87 +107,86 @@ struct SyncWaveView: View {
     }
 }
 
-/// SyncWave のキャンバス本体。`TimelineView` で連続的にフェーズを進めるため
-/// アニメーションのスナップが発生しない。
-private struct SyncWaveCanvas: View {
-    let amp: CGFloat        // 0.0 〜 1.0
-    let speed: Double       // 0 のとき静止(直線描画)
-    let primaryColor: Color
-    let secondaryColor: Color
+// MARK: - Solo Indicator (v0.5)
+//
+// Solo Room 用の 3-dot pulse。Shared の SyncWave と同型だが、color/label が違う。
+// 「ひとりで聴いています」「一時停止」「読み込み中」「ホスト選曲待ち」をテキストで提示。
 
-    private let viewW: CGFloat = 36
-    private let viewH: CGFloat = 18
+struct SoloIndicator: View {
+    let state: SyncState
+
+    private var label: String {
+        switch state {
+        case .loading: return "読み込み中"
+        case .paused:  return "一時停止"
+        case .playing: return "ひとりで聴いています"
+        default:       return "ホスト選曲待ち"
+        }
+    }
 
     var body: some View {
-        if speed <= 0 {
-            // 静止状態: 中央に2本の薄い直線
-            Canvas { ctx, size in
-                let mid = size.height / 2
-                var p1 = Path(); p1.move(to: .init(x: 0, y: mid)); p1.addLine(to: .init(x: size.width, y: mid))
-                ctx.stroke(p1, with: .color(primaryColor.opacity(0.6)), lineWidth: 1.6)
+        HStack(spacing: 8) {
+            ThreeDotPulse(
+                color: .pairtunePrimary,
+                duration: state == .playing ? 1.4 : nil
+            )
+            .frame(width: 30, height: 14)
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(Color(hex: "7A7588"))
+                .tracking(0.3)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.03))
+                .overlay(Capsule().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
+        )
+    }
+}
 
-                var p2 = Path(); p2.move(to: .init(x: 0, y: mid)); p2.addLine(to: .init(x: size.width, y: mid))
-                ctx.stroke(p2, with: .color(secondaryColor.opacity(0.35)), lineWidth: 1.2)
-            }
-        } else {
-            // 連続アニメ: TimelineView で時刻からフェーズを直接計算
-            let dur1 = 2.0 / speed
-            let dur2 = 2.5 / speed
+// MARK: - 3 dot pulse(SyncWave / SoloIndicator 共通)
+//
+// jsx: 3 つの circle (r=2.2) を 9pt 間隔で並べ、duration あり時のみ opacity を
+// .35 → 1 → .35 でアニメーション(stagger 0.18s)。
+
+private struct ThreeDotPulse: View {
+    let color: Color
+    /// nil なら静止(opacity 固定)、値があれば pulse アニメ
+    let duration: Double?
+
+    var body: some View {
+        if let duration {
             TimelineView(.animation) { timeline in
                 let t = timeline.date.timeIntervalSinceReferenceDate
-                let phase1 = CGFloat((t.truncatingRemainder(dividingBy: dur1)) / dur1) * viewW
-                let phase2 = CGFloat((t.truncatingRemainder(dividingBy: dur2)) / dur2) * viewW
-
-                Canvas { ctx, size in
-                    let scaleX = size.width / viewW
-                    let scaleY = size.height / viewH
-                    let mid = (viewH / 2) * scaleY
-                    let aPx = amp * 7 * scaleY    // 振幅 (max ≈ 7px @ scale 1)
-
-                    // 上波(山始まり)
-                    let path1 = waveSegment(yMid: mid, amp: -aPx, scaleX: scaleX, scaleY: scaleY)
-                    ctx.stroke(
-                        path1.applying(.init(translationX: phase1 - viewW * scaleX, y: 0)),
-                        with: .color(primaryColor.opacity(0.9)),
-                        style: StrokeStyle(lineWidth: 1.8, lineCap: .round)
-                    )
-
-                    // 下波(逆相、速度違い)
-                    let path2 = waveSegment(yMid: mid, amp: aPx, scaleX: scaleX, scaleY: scaleY)
-                    ctx.stroke(
-                        path2.applying(.init(translationX: phase2 - viewW * scaleX, y: 0)),
-                        with: .color(secondaryColor.opacity(0.6)),
-                        style: StrokeStyle(lineWidth: 1.4, lineCap: .round)
-                    )
+                HStack(spacing: 6.8) {
+                    ForEach(0..<3, id: \.self) { i in
+                        let phase = ((t + Double(i) * 0.18).truncatingRemainder(dividingBy: duration)) / duration
+                        // 0..1 を sin で 0..1 → 0..1 (滑らかな pulse)
+                        let alpha = 0.35 + 0.65 * (1 - abs(2 * phase - 1))
+                        Circle()
+                            .fill(color)
+                            .frame(width: 4.4, height: 4.4)
+                            .opacity(alpha)
+                    }
+                }
+            }
+        } else {
+            HStack(spacing: 6.8) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Circle()
+                        .fill(color)
+                        .frame(width: 4.4, height: 4.4)
+                        .opacity(0.45)
                 }
             }
         }
     }
-
-    /// W=36(viewBox)に 3 サイクルの波形パスを生成
-    private func waveSegment(yMid: CGFloat, amp: CGFloat, scaleX: CGFloat, scaleY: CGFloat) -> Path {
-        var p = Path()
-        let humps: CGFloat = 3
-        let total = viewW * scaleX
-        let half = total / humps
-        p.move(to: .init(x: 0, y: yMid))
-        var x: CGFloat = 0
-        var dir: CGFloat = -1
-        for _ in 0..<Int(humps) {
-            let cx = x + half / 2
-            let cy = yMid + dir * abs(amp)
-            let nx = x + half
-            p.addQuadCurve(to: .init(x: nx, y: yMid), control: .init(x: cx, y: cy))
-            x = nx
-            dir = -dir
-        }
-        // amp の符号で開始方向を反転(下波用)
-        if amp > 0 {
-            return p.applying(.init(scaleX: 1, y: -1).translatedBy(x: 0, y: -yMid * 2))
-        }
-        return p
-    }
 }
+
+// v0.5: 旧 SyncWaveCanvas (2 本サイン波 Canvas) は撤去。3-dot pulse の ThreeDotPulse に置換。
 
 // MARK: - RemoteAvatar
 //
