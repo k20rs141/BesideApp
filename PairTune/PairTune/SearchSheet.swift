@@ -155,7 +155,7 @@ struct SearchSheet: View {
                         .foregroundColor(.pairtuneTextTertiary)
                         .padding(.leading, 12)
 
-                    TextField("曲名・アーティスト", text: $query)
+                    TextField("曲名・アーティストを検索", text: $query)
                         .font(.system(size: 15))
                         .foregroundColor(.white)
                         .tint(.pairtuneCoral)
@@ -337,16 +337,18 @@ struct SearchSheet: View {
         }
     }
 
+    // v0.5: 検索結果の section header(jsx と統一: 13pt 600 #fff、padding 14/22/10)
     private func sectionHeader(_ text: String) -> some View {
         HStack {
             Text(text)
-                .font(.system(size: 11))
-                .foregroundColor(.pairtuneTextTertiary)
-                .tracking(0.6)
-                .textCase(.uppercase)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .tracking(0.3)
             Spacer()
         }
         .padding(.horizontal, 22)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
     }
 }
 
@@ -420,17 +422,21 @@ private struct ArtistAvatarCell: View {
                     placeholder
                 }
             }
-            .frame(width: 80, height: 80)
+            // jsx: 78pt circle + 0.5px white-08 inset stroke + 0 6 18 black04 shadow
+            .frame(width: 78, height: 78)
             .clipShape(Circle())
-            .overlay(Circle().stroke(Color.white.opacity(0.06), lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.35), radius: 5, y: 2)
+            .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.4), radius: 6, y: 4)
 
+            // jsx: 11.5pt 600 + maxWidth 90 + ellipsis
             Text(artist.name)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11.5, weight: .semibold))
                 .foregroundColor(.white)
+                .tracking(0.3)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(width: 88)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(width: 90)
         }
     }
 
@@ -656,7 +662,7 @@ private struct SearchEmptyState: View {
         }
     }
 
-    // MARK: - Section header (inline style: <日本語> · ENGLISH UPPERCASE)
+    // MARK: - Section header (v0.5: 日本語のみ 13pt 600 #fff、jsx と一致)
 
     private func sectionHeader(_ ja: String, _ en: String, icon: String? = nil) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
@@ -668,12 +674,8 @@ private struct SearchEmptyState: View {
             Text(ja)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
-                .tracking(0.2)
-            Text("· \(en)")
-                .font(.system(size: 10.5))
-                .foregroundColor(Color(hex: "5A5566"))
-                .tracking(0.7)
-                .textCase(.uppercase)
+                .tracking(0.3)
+            // v0.5: 英語サブコピー(· EN UPPERCASE)は撤去
             Spacer()
         }
         .padding(.horizontal, 22)
