@@ -313,21 +313,6 @@ private struct CodeVisual: View {
                     )
             )
             .shadow(color: Color.pairtunePrimary.opacity(0.16), radius: 12, y: 8)
-
-            HStack(spacing: 10) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.pairtuneTextSecondary)
-                Rectangle().fill(Color.white.opacity(0.10)).frame(width: 1, height: 14)
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.pairtuneTextSecondary)
-                Rectangle().fill(Color.white.opacity(0.10)).frame(width: 1, height: 14)
-                Text("送る · 入力する")
-                    .font(.system(size: 10.5))
-                    .tracking(0.5)
-                    .foregroundStyle(Color.pairtuneTextTertiary)
-            }
         }
     }
 }
