@@ -10,59 +10,63 @@ struct SignInView: View {
         ZStack {
             Color.pairtuneBase.ignoresSafeArea()
 
-            // Atmospheric glow
-            RadialGradient(
-                colors: [Color.pairtuneCoral.opacity(0.22), .clear],
-                center: UnitPoint(x: 0.5, y: -0.1),
-                startRadius: 0,
-                endRadius: 380
-            )
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+            // 上部 glow(jsx: top -20%, primary2a, blur 50)+ 下部 glow(jsx: secondary1e)
+            Color.clear
+                .overlay(alignment: .top) {
+                    Circle()
+                        .fill(Color.pairtunePrimary.opacity(0.16))
+                        .frame(width: 500, height: 500)
+                        .blur(radius: 50)
+                        .offset(y: -150)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    Circle()
+                        .fill(Color.pairtuneSecondary.opacity(0.12))
+                        .frame(width: 320, height: 320)
+                        .blur(radius: 45)
+                        .offset(x: 60, y: 60)
+                }
+                .clipped()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
             VStack(spacing: 0) {
                 Spacer()
 
-                // Logo + wordmark + tagline
+                // jsx: ロゴ 200×72 / wordmark 38pt / tagline 15pt #A8A8A8(英語サブなし)
                 VStack(spacing: 0) {
-                    PairTuneLogoView(size: 200, glow: true, animate: true, animKey: logoAnimKey)
+                    PairTuneLogoView(size: 200, glow: true)
                         .opacity(isProcessing ? 0.6 : 1)
                         .animation(.easeInOut(duration: 0.3), value: isProcessing)
-                        .onTapGesture { logoAnimKey += 1 }
 
                     PairTuneWordmark(size: 38)
                         .padding(.top, 20)
 
-                    VStack(spacing: 6) {
-                        Text("離れていても、同じ音を。")
-                            .font(.system(size: 14))
-                            .foregroundColor(.pairtuneTextSecondary)
-                            .multilineTextAlignment(.center)
-                            .tracking(0.4)
-
-                        Text("The same song, together — without a call.")
-                            .font(.system(size: 11.5))
-                            .foregroundColor(.pairtuneTextTertiary)
-                            .tracking(0.6)
-                    }
-                    .padding(.top, 14)
-                    .lineSpacing(4)
+                    Text("音楽を、いちばん近い人と。")
+                        .font(.system(size: 15))
+                        .foregroundColor(.pairtuneTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .tracking(0.3)
+                        .lineSpacing(4)
+                        .padding(.top, 22)
                 }
 
                 Spacer()
 
-                // Bottom section
-                VStack(spacing: 18) {
+                // Bottom: Sign in with Apple + 続行同意
+                VStack(spacing: 16) {
                     Button {
                         guard !isProcessing else { return }
                         onSignIn()
                     } label: {
                         HStack(spacing: 8) {
                             if isProcessing {
-                                SpinnerView(color: .black, size: 17)
+                                SpinnerView(color: .black, size: 18)
+                                Text("サインイン中…")
+                                    .font(.system(size: 16, weight: .semibold))
                             } else {
                                 Image(systemName: "apple.logo")
-                                    .font(.system(size: 17, weight: .medium))
+                                    .font(.system(size: 18, weight: .medium))
                                 Text("Sign in with Apple")
                                     .font(.system(size: 16, weight: .semibold))
                             }
@@ -72,31 +76,33 @@ struct SignInView: View {
                         .frame(height: 54)
                         .background(Color.white)
                         .cornerRadius(14)
-                        .shadow(color: Color.white.opacity(0.08), radius: 16, y: 4)
                         .opacity(isProcessing ? 0.6 : 1)
                     }
                     .disabled(isProcessing)
                     .animation(.easeInOut(duration: 0.2), value: isProcessing)
 
+                    // 続行することで 利用規約 と プライバシー に同意
                     HStack(spacing: 4) {
                         Text("続行することで")
                         Text("利用規約")
-                            .foregroundColor(.pairtuneTextSecondary)
+                            .foregroundColor(Color(hex: "C9C2DD"))
                             .underline()
                         Text("と")
                         Text("プライバシー")
-                            .foregroundColor(.pairtuneTextSecondary)
+                            .foregroundColor(Color(hex: "C9C2DD"))
                             .underline()
                         Text("に同意")
                     }
                     .font(.system(size: 11))
-                    .foregroundColor(.pairtuneTextTertiary)
+                    .foregroundColor(Color(hex: "7A7A7A"))
                     .tracking(0.4)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 22)
                 .padding(.bottom, 56)
             }
+            .frame(maxWidth: .infinity)
         }
+        .clipped()
     }
 }
 
