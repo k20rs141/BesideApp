@@ -123,9 +123,9 @@ struct QueueSheet: View {
 
     private var subtitleText: String {
         if isSolo {
-            return "あなたのキュー · solo"
+            return "あなたのキュー"
         }
-        return "ふたりのキュー · shared · 両方から操作できます"
+        return "ふたりのキュー · 両方から操作できます"
     }
 
     private var hairline: some View {
@@ -199,10 +199,10 @@ struct QueueSheet: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                Text("PLAYING")
-                    .font(.system(size: 9, weight: .semibold))
+                Text("再生中")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.pairtunePrimary)
-                    .tracking(0.6)
+                    .tracking(0.3)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(
@@ -247,10 +247,10 @@ struct QueueSheet: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
                 .tracking(0.3)
-            Text(" · Up next · \(roomViewModel.queue.items.count) 曲")
+            Text(" · \(roomViewModel.queue.items.count) 曲")
                 .font(.system(size: 10.5))
                 .foregroundColor(Color(hex: "5A5566"))
-                .tracking(0.6)
+                .tracking(0.3)
             Spacer()
             if queueEditMode == .active {
                 Button("完了") {

@@ -338,15 +338,18 @@ struct PairApprovalSheet: View {
         .frame(height: 130)
 
         VStack(spacing: 8) {
+            // v0.5: 英語サブコピーを撤去し、jsx の感情的タグラインに置換
             Text("ペアになりました")
                 .font(.system(size: 24, weight: .medium))
                 .foregroundColor(.white)
                 .tracking(0.4)
 
-            Text("You and \(partnerName) are now paired")
+            Text("ふたりだけの部屋ができました。\nいつでも、同じ音を。")
                 .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.55))
-                .tracking(0.4)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .tracking(0.3)
         }
         .padding(.top, 32)
         .opacity(pulseTrigger > 0 ? 1 : 0)

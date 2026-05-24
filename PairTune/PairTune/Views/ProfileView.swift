@@ -390,10 +390,10 @@ struct ProfileView: View {
 
                 Spacer()
 
-                Text("PAIRED")
-                    .font(.system(size: 9.5, weight: .semibold))
+                Text("ペア中")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.pairtunePrimary)
-                    .tracking(0.6)
+                    .tracking(0.3)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(
@@ -608,7 +608,7 @@ struct ProfileView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        Text("PairTune v0.4 · 離れていても、同じ音を。")
+        Text("PairTune v0.5 · 離れていても、同じ音を。")
             .font(.system(size: 10))
             .foregroundColor(Color(hex: "3F3F4A"))
             .tracking(0.6)
