@@ -140,19 +140,35 @@ struct SearchSheet: View {
 
     private var searchRoot: some View {
         VStack(spacing: 0) {
-            // Handle
+            // Handle(sheet 提示なので保持)
             RoundedRectangle(cornerRadius: 2.5)
                 .fill(Color.white.opacity(0.18))
                 .frame(width: 36, height: 5)
                 .padding(.top, 12)
-                .padding(.bottom, 18)
+                .padding(.bottom, 14)
 
-            // Search bar + cancel
+            // v0.5: jsx 通り「← back 38×38 + search field 40pt」の 2 列構造に変更。
+            // 検索フィールドの背景も jsx の rgba(255,255,255,0.05) に揃える。
             HStack(spacing: 10) {
+                Button {
+                    isPresented = false
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(hex: "A8A8A8"))
+                        .frame(width: 38, height: 38)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
+                        )
+                }
+                .buttonStyle(.plain)
+
                 HStack(spacing: 0) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 15))
-                        .foregroundColor(.pairtuneTextTertiary)
+                        .foregroundColor(Color(hex: "6B6B6B"))
                         .padding(.leading, 12)
 
                     TextField("曲名・アーティストを検索", text: $query)
@@ -172,24 +188,16 @@ struct SearchSheet: View {
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(hex: "1F1F1F"))
+                        .fill(Color.white.opacity(0.05))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
                         )
                 )
                 .frame(height: 40)
-
-                Button {
-                    isPresented = false
-                } label: {
-                    Text("キャンセル")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.pairtuneCoral)
-                }
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
 
             // Results
             ScrollView {

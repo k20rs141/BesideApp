@@ -18,7 +18,11 @@ struct AlbumDetailView: View {
     /// アーティスト名タップ / TrackContextMenu「アーティストを見る」の遷移先。
     /// 呼び出し側で push する。caller が nil の時はリンク無効化。
     var onShowArtist: ((Artist) -> Void)? = nil
+    /// custom sticky back button のタップで pop するためのコールバック。
+    /// nil の場合は NavigationStack の dismissEnvironment を使う。
+    var onBack: (() -> Void)? = nil
 
+    @Environment(\.dismiss) private var dismiss
     @State private var contextTrack: Track?
     @State private var toastMessage: String?
 
@@ -33,7 +37,7 @@ struct AlbumDetailView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     coverHero
-                        .padding(.top, 8)
+                        .padding(.top, 52)
                     ctaRow
                         .padding(.horizontal, 18)
                         .padding(.top, 18)
@@ -64,6 +68,33 @@ struct AlbumDetailView: View {
                 }
             }
             .scrollIndicators(.hidden)
+
+            // v0.5: sticky back button(jsx の絶対配置 36×36 + blur 背景)
+            VStack {
+                HStack {
+                    Button {
+                        if let onBack { onBack() } else { dismiss() }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                                    .environment(\.colorScheme, .dark)
+                                    .overlay(
+                                        Circle().stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                Spacer()
+            }
 
             // Toast overlay
             if let msg = toastMessage {
@@ -99,10 +130,8 @@ struct AlbumDetailView: View {
                 .transition(.opacity)
             }
         }
-        .navigationTitle(viewModel.album.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.clear, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             if viewModel.tracks.isEmpty { viewModel.load() }
         }
@@ -111,15 +140,46 @@ struct AlbumDetailView: View {
     // MARK: - Ambient bleed
 
     private var ambientBleed: some View {
+        // jsx: album のカバー画像を上 540pt に拡大・ぼかして敷き、下へフェード。
+        // artwork が無いときだけ primary→surface のグラデでフォールバック。
         VStack(spacing: 0) {
-            LinearGradient(
-                colors: [Color.pairtunePrimary.opacity(0.55), Color.pairtuneSurface.opacity(0)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Group {
+                if let url = viewModel.album.artworkURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .blur(radius: 60)
+                                .opacity(0.55)
+                                .overlay(Color.pairtuneSurface.opacity(0.25))
+                        default:
+                            primaryFallbackGradient
+                        }
+                    }
+                } else {
+                    primaryFallbackGradient
+                }
+            }
             .frame(height: 540)
+            .mask(
+                LinearGradient(
+                    colors: [Color.black, Color.black.opacity(0.6), Color.black.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             Spacer(minLength: 0)
         }
+    }
+
+    private var primaryFallbackGradient: some View {
+        LinearGradient(
+            colors: [Color.pairtunePrimary.opacity(0.55), Color.pairtuneSurface.opacity(0)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     // MARK: - Cover hero
@@ -127,7 +187,7 @@ struct AlbumDetailView: View {
     private var coverHero: some View {
         VStack(spacing: 14) {
             GeometryReader { geo in
-                let size = geo.size.width * 0.72
+                let size = geo.size.width * 0.65
                 let xPad = (geo.size.width - size) / 2
                 Group {
                     if let url = viewModel.album.artworkURL {
