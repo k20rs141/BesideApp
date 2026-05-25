@@ -97,10 +97,10 @@ struct ArtistDetailView: View {
                     }
 
                     if !viewModel.topSongs.isEmpty {
+                        // jsx: padding 24/22/10(top/horizontal/bottom)
                         topSongsHeader
-                            .padding(.horizontal, 18)
                             .padding(.top, 24)
-                            .padding(.bottom, 6)
+                            .padding(.bottom, 10)
 
                         LazyVStack(spacing: 0) {
                             ForEach(Array(viewModel.topSongs.enumerated()), id: \.element.id) { idx, track in
@@ -120,8 +120,9 @@ struct ArtistDetailView: View {
                     }
 
                     if !viewModel.albums.isEmpty {
-                        sectionHeader("アルバム", "ALBUMS")
-                            .padding(.top, 22)
+                        // jsx: collection section padding '10px 22px 12px'(top 10 / horizontal 22 / bottom 12)
+                        sectionHeader("アルバム")
+                            .padding(.top, 18)
                             .padding(.bottom, 12)
 
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -140,8 +141,8 @@ struct ArtistDetailView: View {
                     }
 
                     if !viewModel.singles.isEmpty {
-                        sectionHeader("シングル＆EP", "SINGLES & EPS")
-                            .padding(.top, 22)
+                        sectionHeader("シングル＆EP")
+                            .padding(.top, 18)
                             .padding(.bottom, 12)
 
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -158,8 +159,8 @@ struct ArtistDetailView: View {
                     }
 
                     if !viewModel.liveAlbums.isEmpty {
-                        sectionHeader("ライブアルバム", "LIVE ALBUMS")
-                            .padding(.top, 22)
+                        sectionHeader("ライブアルバム")
+                            .padding(.top, 18)
                             .padding(.bottom, 12)
 
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -176,8 +177,8 @@ struct ArtistDetailView: View {
                     }
 
                     if !viewModel.featuredPlaylists.isEmpty {
-                        sectionHeader("プレイリスト", "PLAYLISTS")
-                            .padding(.top, 22)
+                        sectionHeader("プレイリスト")
+                            .padding(.top, 18)
                             .padding(.bottom, 12)
 
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -394,6 +395,9 @@ struct ArtistDetailView: View {
 
     // MARK: - Latest release card
 
+    // v0.5: jsx (lines 97-126) に揃える。
+    // 構造: [アート 108×108] [VStack(ラベル + タイトル + meta)] [Spacer] [chevron-right]
+    // 旧実装の "+ ボタン"(VStack 内に円形 + アイコン)は撤去 — カード全体タップで遷移するため不要
     private func latestReleaseCard(_ album: Album) -> some View {
         Button {
             onSelectAlbum?(album)
@@ -416,36 +420,34 @@ struct ArtistDetailView: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
                 )
-                .shadow(color: .black.opacity(0.5), radius: 16, y: 6)
+                .shadow(color: .black.opacity(0.5), radius: 14, y: 12)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
+                    // jsx: 10.5pt #7A7588 letterSpacing .5 uppercase
                     Text("最新リリース")
-                        .font(.system(size: 11))
+                        .font(.system(size: 10.5))
                         .foregroundColor(Color(hex: "7A7588"))
-                        .tracking(0.3)
+                        .tracking(0.5)
+                        .textCase(.uppercase)
+                    // jsx: 18pt 600 #fff
                     Text(album.title)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
-                        .lineLimit(1)
+                        .tracking(0.1)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    // jsx: 12pt #7A7588(本来は kind · tracks · date だが、Album モデルに date がないため artistName で代替)
                     Text(album.artistName)
                         .font(.system(size: 12))
                         .foregroundColor(Color(hex: "7A7588"))
+                        .tracking(0.2)
                         .lineLimit(1)
-
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.pairtunePrimary)
-                        .frame(width: 30, height: 30)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(0.06))
-                                .overlay(
-                                    Circle().stroke(Color.pairtunePrimary.opacity(0.25), lineWidth: 0.5)
-                                )
-                        )
-                        .padding(.top, 4)
                 }
                 Spacer(minLength: 0)
+                // jsx: 右端の chevron-right 16pt #5A5566 — タップで Album Detail 遷移
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(hex: "5A5566"))
             }
         }
         .buttonStyle(.plain)
